@@ -3,13 +3,14 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 	"members/common"
 	"members/config"
 	errs "members/errors"
+	"members/logging"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -29,6 +30,8 @@ type (
 		tick *time.Ticker
 
 		ishealth bool
+
+		logger *zerolog.Logger
 	}
 
 	loop_next = func(context.Context) error
@@ -75,11 +78,7 @@ func (s *BaseService) GetBase() *BaseService {
 }
 
 func (s *BaseService) Name() string {
-	svc := service_keys[s.key]
-	if s.ishealth {
-		return fmt.Sprintf("%s (health)", svc)
-	}
-	return svc
+	return service_keys[s.key]
 }
 
 func (s *BaseService) loop(ctx context.Context) error {
@@ -88,7 +87,7 @@ func (s *BaseService) loop(ctx context.Context) error {
 	}
 	select {
 	case <-ctx.Done():
-		log.Printf("%s closing", s.Name())
+		s.logger.Info().Msg("closing")
 		return done
 	default:
 		return nil
@@ -103,7 +102,7 @@ func (s *BaseService) LoopedStarter(ctx context.Context, chain ...loop_next) err
 		for n, ch := range chain {
 			prev := next
 			next = func(ctx context.Context) error {
-				log.Printf("level %d", n)
+				s.logger.Debug().Msgf("level %d", n)
 				if err := prev(ctx); err != nil {
 					return err
 				}
@@ -115,13 +114,17 @@ func (s *BaseService) LoopedStarter(ctx context.Context, chain ...loop_next) err
 	}
 	for {
 		if err := next(ctx); err != nil {
-			log.Fatal(err)
+			s.logger.Err(err).Send()
 			s.GetErrs() <- err
 			return err
 		}
-		log.Printf("%s running", s.Name())
+		s.logger.Print("running")
 		<-s.tick.C
 	}
+}
+
+func (s *BaseService) GetLogger() *zerolog.Logger {
+	return s.logger
 }
 
 func (s *BaseService) NewBase(
@@ -141,7 +144,25 @@ func (s *BaseService) NewBase(
 		nil, nil,
 		time.NewTicker(tick),
 		ishealth,
+		nil,
 	}
+}
+
+func (s *BaseService) BuildLogger(
+	root *zerolog.Logger,
+) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sub := logging.WithSub(root, s.Name(), func(ctx zerolog.Context) zerolog.Context {
+		ctx = ctx.Bool("health", s.ishealth)
+		if s.ishealth {
+			ctx = ctx.Str("address", s.health)
+		} else {
+			ctx = ctx.Str("address", s.service)
+		}
+		return ctx
+	})
+	s.logger = sub
 }
 
 func (s *BaseService) WithChainer(

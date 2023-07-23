@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/jackc/pgx/v5 v5.4.2
+	github.com/rs/zerolog v1.29.1
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/spf13/viper v1.16.0
 	github.com/uptrace/bun v1.1.14
@@ -40,6 +41,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/miekg/dns v1.1.26 // indirect

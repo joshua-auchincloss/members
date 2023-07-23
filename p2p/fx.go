@@ -3,11 +3,12 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 	"members/common"
 	"members/config"
 	"members/service"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hashicorp/memberlist"
 	"go.uber.org/fx"

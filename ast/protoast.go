@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"members/storage"
 	"os"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/emicklei/proto"
 )

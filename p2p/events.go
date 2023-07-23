@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 
 	"github.com/hashicorp/memberlist"
 )

@@ -1,7 +1,7 @@
 package errs
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 
 	"go.uber.org/fx"
 )

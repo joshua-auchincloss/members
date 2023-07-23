@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
-	"log"
 	"members/common"
 	"members/config"
 	errs "members/errors"
 	"members/storage"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"go.uber.org/fx"
 )
@@ -95,18 +98,25 @@ func Create[T Service](key common.Service) func(
 	fw *SvcFramework,
 	factory ServiceFactory[T],
 	store storage.Store,
+	root *zerolog.Logger,
 	watcher errs.Watcher) error {
 	return func(
 		prov config.ConfigProvider,
 		fw *SvcFramework,
 		factory ServiceFactory[T],
 		store storage.Store,
+		root *zerolog.Logger,
 		watcher errs.Watcher) error {
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
 			fw.health = func(health, rpc string) Service {
 				h := factory.CreateService(prov, store)
-				h.WithBase(*h.NewBase(prov, watcher, health, rpc, poll_freq, true))
+				h.WithBase(*h.NewBase(prov,
+					watcher,
+					health,
+					rpc,
+					time.Second*10,
+					true))
 				return h
 			}
 			defer fw.mu.Unlock()
@@ -114,10 +124,18 @@ func Create[T Service](key common.Service) func(
 		}
 		fu := func(health, rpc string) Service {
 			svc := factory.CreateService(prov, store)
+			svc.WithBase(*svc.NewBase(prov,
+				watcher,
+				health,
+				rpc,
+				poll_freq,
+				false))
 			svc.WithKey(key)
-			svc.WithBase(*svc.NewBase(prov, watcher, health, rpc, poll_freq, false))
+			svc.BuildLogger(root)
+
 			h := fw.health(health, rpc)
 			h.WithKey(key)
+			h.BuildLogger(root)
 			h.WithChainer(svc)
 			return h
 		}

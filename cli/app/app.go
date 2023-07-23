@@ -1,9 +1,9 @@
 package app
 
 import (
-	"log"
 	"members/config"
 	errs "members/errors"
+	"members/logging"
 	"members/p2p"
 	"members/service"
 	"members/service/health"
@@ -12,6 +12,8 @@ import (
 	storage_fx "members/storage/fx"
 	"os/signal"
 	"syscall"
+
+	"github.com/rs/zerolog/log"
 
 	"os"
 
@@ -28,6 +30,7 @@ var cmds = []*cli.Command{
 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 			app := fx.New(
 				fx.Supply(orig, sigs),
+				logging.Module,
 				errs.Module,
 				config.Module,
 				storage_fx.Dependencies,
@@ -53,6 +56,7 @@ var cmds = []*cli.Command{
 		Action: func(ctx *cli.Context) error {
 			app := fx.New(
 				fx.Supply(ctx),
+				logging.Module,
 				fx.Provide(
 					config.New,
 				),

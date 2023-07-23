@@ -1,8 +1,9 @@
 package config
 
 import (
-	"log"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
@@ -89,7 +90,7 @@ func (vx *default_v[T]) withOverride(ctx *cli.Context) {
 			vx.value = v
 		}
 	}
-	log.Println(vx.Key, vx.value)
+	log.Debug().Interface(vx.Key, vx.value).Msg("overriden")
 }
 
 var (

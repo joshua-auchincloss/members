@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"members/common"
 	"members/config"
 	"members/utils"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -16,7 +17,8 @@ import (
 
 type (
 	Sql struct {
-		db *bun.DB
+		db     *bun.DB
+		logger *zerolog.Logger
 	}
 	Initializer = func(prov config.ConfigProvider) (*bun.DB, error)
 )
@@ -26,7 +28,7 @@ var (
 )
 
 func NewSql(db *bun.DB) Store {
-	return &Sql{db}
+	return &Sql{db, nil}
 }
 
 func runCreate[T interface{}](
@@ -57,8 +59,12 @@ func drop[T interface{}](sq *Sql, model T) {
 		Cascade().
 		Exec(context.TODO()); err != nil {
 		// panic(err)
-		log.Print(err)
+		sq.logger.Print(err)
 	}
+}
+
+func (sq *Sql) WithLogger(sub *zerolog.Logger) {
+	sq.logger = sub
 }
 
 func (sq *Sql) QuoteCol(v string) string {
@@ -90,7 +96,7 @@ func (sq *Sql) GetMembers(ctx context.Context, kind ...common.Service) ([]*commo
 		)
 	}
 	if err := base.Scan(context.TODO(), &out); err != nil {
-		log.Print(err)
+		sq.logger.Print(err)
 		return nil, err
 	}
 	return out, nil
@@ -103,13 +109,13 @@ func (sq *Sql) CreateProject(ctx context.Context, project *common.ProtoProject, 
 	if _, err := sq.db.NewInsert().
 		Model(project).
 		Exec(ctx, project); err != nil && err != sql.ErrNoRows {
-		log.Print(err)
+		sq.logger.Print(err)
 		return err
 	}
 	if _, err := sq.db.NewInsert().
 		Model(proto).
 		Exec(ctx, proto); err != nil && err != sql.ErrNoRows {
-		log.Print(err)
+		sq.logger.Print(err)
 		return err
 	}
 	return nil

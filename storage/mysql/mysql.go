@@ -3,9 +3,10 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"members/config"
 	"members/utils"
+
+	"github.com/rs/zerolog/log"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/uptrace/bun"

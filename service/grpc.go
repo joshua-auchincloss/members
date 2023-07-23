@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"log"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"

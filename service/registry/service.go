@@ -2,11 +2,12 @@ package registry
 
 import (
 	"context"
-	"log"
 	"members/grpc/api/v1/registry/registryconnect"
 	registry "members/grpc/api/v1/registry/registryconnect"
 	"members/service"
 	"members/storage"
+
+	"github.com/rs/zerolog/log"
 )
 
 type (

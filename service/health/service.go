@@ -2,7 +2,6 @@ package health
 
 import (
 	"context"
-	"log"
 	"members/common"
 	"members/grpc/api/v1/health/healthconnect"
 	health "members/grpc/api/v1/health/healthconnect"
@@ -41,23 +40,25 @@ func (h *healthService) loop(ctx context.Context) error {
 
 	ctx, cancel := context.WithTimeout(ctx, default_polling/2)
 	defer cancel()
-	if err := h.store.UpsertMembership(ctx, &common.Membership{
+	memb := &common.Membership{
 		Service:        h.GetKey(),
 		PublicAddress:  h.GetService(),
 		JoinTime:       time.Now(),
 		LastHealthTime: time.Now(),
-	}); err != nil {
-		log.Printf("err: %s", err)
+	}
+
+	if err := h.store.UpsertMembership(ctx, memb); err != nil {
+		h.GetLogger().Error().Err(err).Msg("could not upsert membership")
 		return err
 	} else {
-		log.Print("upserted")
+		h.GetLogger().Info().Msgf("upserted: %+v", memb)
 	}
 	if memb, err := h.store.GetMembers(ctx); err != nil {
-		log.Print(err)
+		h.GetLogger().Print(err)
 		return err
 	} else {
 		for _, mem := range memb {
-			log.Printf(
+			h.GetLogger().Printf(
 				"%+v", *mem,
 			)
 		}
@@ -76,7 +77,7 @@ func (h *healthService) Start(ctx context.Context) {
 	)
 }
 func (h *healthService) Stop() error {
-	log.Print("health stopping")
+	h.GetLogger().Print("health stopping")
 	return nil
 }
 
@@ -86,7 +87,7 @@ func (h *healthService) Check(ctx context.Context, req *connect.Request[pkg.Heal
 
 func (h *healthService) Watch(ctx context.Context, req *connect.Request[pkg.HealthCheckRequest], stream *connect.ServerStream[pkg.HealthCheckResponse]) error {
 	tick := time.NewTicker(time.Millisecond * 250)
-	log.Print(req.Msg.Service)
+	h.GetLogger().Print(req.Msg.Service)
 	for {
 		if err := stream.Send(
 			&serving,

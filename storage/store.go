@@ -5,10 +5,13 @@ import (
 	"members/common"
 	"members/config"
 	wctx "members/context"
+
+	"github.com/rs/zerolog"
 )
 
 type (
 	Store interface {
+		WithLogger(sub *zerolog.Logger)
 		Setup(config config.ConfigProvider) error
 		Teardown() error
 		Registered(key string) bool

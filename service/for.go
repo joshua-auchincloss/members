@@ -1,10 +1,11 @@
 package service
 
 import (
-	"log"
 	"members/common"
 	"members/config"
 	"members/utils"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (

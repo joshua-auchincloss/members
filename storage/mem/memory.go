@@ -3,9 +3,10 @@ package mem
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"members/config"
 	"members/utils"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/uptrace/bun"
 

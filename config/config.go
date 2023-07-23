@@ -2,9 +2,10 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"members/common"
 	"os"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/spf13/viper"
