@@ -22,6 +22,8 @@ func New() Context {
 
 var (
 	NewContext = fx.Module("context",
-		fx.Supply(fx.Annotate(New, fx.As((*Context)(nil)))),
+		fx.Supply(
+			fx.Annotate(New, fx.As(new(Context))),
+		),
 	)
 )

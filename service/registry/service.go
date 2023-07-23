@@ -7,7 +7,6 @@ import (
 	registry "members/grpc/api/v1/registry/registryconnect"
 	"members/service"
 	"members/storage"
-	"time"
 )
 
 type (
@@ -27,18 +26,9 @@ func (h *registryService) WithBase(base service.BaseService) {
 }
 
 func (h *registryService) Start(ctx context.Context) {
-	tick := time.NewTicker(time.Second)
 	pth, handle := registryconnect.NewRegistryHandler(h)
 	go service.GrpcStarter(h.GetService(), pth, handle)
-	for {
-		select {
-		case <-ctx.Done():
-			log.Print("registry closing")
-			return
-		case <-tick.C:
-			log.Print("registry running")
-		}
-	}
+	h.LoopedStarter(ctx)
 }
 
 func (h *registryService) Stop() error {

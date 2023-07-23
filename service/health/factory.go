@@ -46,8 +46,6 @@ func New() ServiceFactory {
 
 func (h *healthFactory) CreateService(cfg config.ConfigProvider, store storage.Store) *healthService {
 	return &healthService{
-		ticker: *time.NewTicker(h.poll),
-		status: common.NoStatus,
-		store:  store,
+		store: store,
 	}
 }

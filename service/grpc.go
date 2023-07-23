@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -8,7 +9,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
-func GrpcStarter(addr, path string, handler http.Handler) error {
+func GrpcStarter(addr, path string, handler http.Handler) func(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	if err := http.ListenAndServe(
@@ -16,7 +17,10 @@ func GrpcStarter(addr, path string, handler http.Handler) error {
 		h2c.NewHandler(mux, &http2.Server{}),
 	); err != nil {
 		log.Print("err")
-		panic(err)
+		return nil
 	}
-	return nil
+	return func(ctx context.Context) error {
+
+		return nil
+	}
 }

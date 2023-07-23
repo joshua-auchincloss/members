@@ -26,7 +26,7 @@ type (
 	SvcFramework struct {
 		mu     *sync.Mutex
 		in     map[common.Service]wrapped
-		health func() Service
+		health wrapped
 	}
 
 	wrapped = func(health, rpc string) Service
@@ -104,8 +104,10 @@ func Create[T Service](key common.Service) func(
 		watcher errs.Watcher) error {
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
-			fw.health = func() Service {
-				return factory.CreateService(prov, store)
+			fw.health = func(health, rpc string) Service {
+				h := factory.CreateService(prov, store)
+				h.WithBase(*h.NewBase(prov, watcher, health, rpc, poll_freq, true))
+				return h
 			}
 			defer fw.mu.Unlock()
 			return nil
@@ -113,10 +115,9 @@ func Create[T Service](key common.Service) func(
 		fu := func(health, rpc string) Service {
 			svc := factory.CreateService(prov, store)
 			svc.WithKey(key)
-			svc.WithBase(*svc.NewBase(prov, watcher, health, rpc))
-			h := fw.health()
+			svc.WithBase(*svc.NewBase(prov, watcher, health, rpc, poll_freq, false))
+			h := fw.health(health, rpc)
 			h.WithKey(key)
-			h.WithBase(*h.NewBase(prov, watcher, health, rpc))
 			h.WithChainer(svc)
 			return h
 		}

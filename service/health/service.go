@@ -2,7 +2,6 @@ package health
 
 import (
 	"context"
-	"errors"
 	"log"
 	"members/common"
 	"members/grpc/api/v1/health/healthconnect"
@@ -20,17 +19,12 @@ type (
 		health.UnimplementedHealthHandler
 		service.BaseService
 
-		ticker time.Ticker
-		status common.Status
-
 		store storage.Store
 	}
 )
 
 var (
 	_ service.Service = ((*healthService)(nil))
-
-	done = errors.New("done")
 )
 
 var (
@@ -39,23 +33,15 @@ var (
 	}
 )
 
-func (h *healthService) setStatus(status common.Status) {
-	h.GetMu().Lock()
-	h.status = status
-	h.GetMu().Unlock()
-}
-
 func (h *healthService) WithBase(base service.BaseService) {
 	h.BaseService = base
 }
 
-func (h *healthService) loop() error {
-	if h.status != common.StatusStarted {
-		return done
-	}
-	ctx, cancel := context.WithTimeout(context.TODO(), default_polling/2)
+func (h *healthService) loop(ctx context.Context) error {
+
+	ctx, cancel := context.WithTimeout(ctx, default_polling/2)
 	defer cancel()
-	if err := h.store.UpsertMembership(context.TODO(), &common.Membership{
+	if err := h.store.UpsertMembership(ctx, &common.Membership{
 		Service:        h.GetKey(),
 		PublicAddress:  h.GetService(),
 		JoinTime:       time.Now(),
@@ -66,7 +52,6 @@ func (h *healthService) loop() error {
 	} else {
 		log.Print("upserted")
 	}
-
 	if memb, err := h.store.GetMembers(ctx); err != nil {
 		log.Print(err)
 		return err
@@ -77,33 +62,21 @@ func (h *healthService) loop() error {
 			)
 		}
 	}
-
-	log.Printf("health %d: serving", h.GetKey())
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-h.ticker.C:
-	}
 	return nil
 }
 
 func (h *healthService) Start(ctx context.Context) {
 	pth, handle := healthconnect.NewHealthHandler(h)
 	go service.GrpcStarter(h.GetHealth(), pth, handle)
-	if h.status < common.StatusStarted {
-		h.setStatus(common.StatusStarted)
-		for {
-			if err := h.loop(); err != nil {
-				log.Print(err)
-				h.GetErrs() <- err
-				return
-			}
-		}
-	}
+	h.LoopedStarter(
+		ctx,
+		func(ctx context.Context) error {
+			return h.loop(ctx)
+		},
+	)
 }
 func (h *healthService) Stop() error {
 	log.Print("health stopping")
-	h.setStatus(common.StatusClosed)
 	return nil
 }
 

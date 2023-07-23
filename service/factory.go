@@ -6,6 +6,7 @@ import (
 	"members/config"
 	errs "members/errors"
 	"members/storage"
+	"time"
 )
 
 type (
@@ -21,9 +22,13 @@ type (
 		WithKey(key common.Service)
 		GetBase() *BaseService
 		WithBase(base BaseService)
-		NewBase(cfg config.ConfigProvider,
+		NewBase(
+			cfg config.ConfigProvider,
 			watcher errs.Watcher,
-			health, service string) *BaseService
+			health, service string,
+			tick time.Duration,
+			ishealth bool,
+		) *BaseService
 	}
 	ServiceFactory[T Service] interface {
 		CreateService(cfg config.ConfigProvider, store storage.Store) T

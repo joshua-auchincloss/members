@@ -16,14 +16,14 @@ import (
 var (
 	Module = fx.Module(
 		"p2p",
-		fx.Provide(
-			newRegistry,
-		),
-		fx.Invoke(
-			newList,
-			ensure_registry,
-			// startNetwork,
-		),
+		// fx.Provide(
+		// 	newRegistry,
+		// ),
+		// fx.Invoke(
+		// 	newList,
+		// 	ensure_registry,
+		// 	// startNetwork,
+		// ),
 	)
 )
 
