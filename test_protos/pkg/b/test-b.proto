@@ -8,7 +8,7 @@ enum EnumAllowingAlias {
 }
 
 message outer {
-    message inner { 
+    message inner {
       int64 ival = 1;
     }
     // some comment added

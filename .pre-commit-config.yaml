@@ -8,3 +8,10 @@ repos:
       - id: go-imports
       - id: go-fmt
       - id: go-critic
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-added-large-files

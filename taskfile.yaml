@@ -1,5 +1,5 @@
 version: "3"
-env:  
+env:
   run: go run ./cli
 tasks:
   dev-deps:
@@ -38,7 +38,7 @@ tasks:
   postgres-schema:
     dotenv:
       - env/postgres.env
-    
+
     cmds:
       - $run schema
 
@@ -82,7 +82,7 @@ tasks:
 
 
   tidy:
-    
+
     cmds:
       - go mod tidy
 
