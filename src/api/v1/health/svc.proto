@@ -1,0 +1,9 @@
+syntax = "proto3";
+package members.v1.health.svc;
+import "api/v1/health/pkg/health.proto";
+
+
+service Health {
+    rpc Check(members.v1.health.pkg.HealthCheckRequest) returns (members.v1.health.pkg.HealthCheckResponse);
+    rpc Watch(members.v1.health.pkg.HealthCheckRequest) returns (stream members.v1.health.pkg.HealthCheckResponse);
+}

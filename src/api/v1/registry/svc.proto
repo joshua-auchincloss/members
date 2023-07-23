@@ -1,0 +1,9 @@
+syntax = "proto3";
+package members.v1.registry.svc;
+import "api/v1/registry/pkg/def.proto";
+import "api/v1/common/def.proto";
+
+
+service Registry {
+    rpc RegisterVersion(members.v1.registry.pkg.NewVersionRequest) returns (members.v1.common.ProtoMeta);
+}

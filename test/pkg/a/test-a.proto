@@ -1,0 +1,23 @@
+syntax = "proto3";
+package pbtesta;
+
+import "google/protobuf/any.proto";
+
+enum EnumAllowingAlias {
+    UNKNOWN = 0;
+    STARTED = 1;
+    RUNNING = 2;
+}
+
+message outer {
+    message inner { 
+      int64 ival = 1;
+    }
+    repeated inner inner_message = 2;
+    EnumAllowingAlias enum_field =3;
+    map<int32, string> my_map = 4;
+}
+
+service HelloService {
+  rpc SayHello (outer) returns (outer.inner) {};
+}

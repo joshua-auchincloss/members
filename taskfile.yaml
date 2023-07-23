@@ -1,0 +1,58 @@
+version: "3"
+
+tasks:
+
+  proto:
+    dir: src
+    cmds:
+      - buf generate
+
+  postgres:
+    cmds:
+      - docker run
+        -d --name postgres
+        -e PGDATA=/var/lib/postgresql/data/pgdata
+        -e POSTGRES_PASSWORD=postgres
+        -p 5432:5432
+        postgres
+
+  postgres:
+    dotenv:
+      - ../config/postgres.env
+    dir: src
+    cmds:
+      - go run . schema
+
+  sqlite:
+    dotenv:
+      - ../config/sqlite.env
+    dir: src
+    cmds:
+      - go run . schema
+
+  a:
+    dotenv: 
+      - ../config/postgres.env
+      - ../config/a.env
+    dir: src
+    cmds:
+      - task: postgres
+      - go run . start
+
+  b:
+    dotenv: 
+      - ../config/postgres.env
+      - ../config/b.env
+    dir: src
+    cmds:
+      - go run . start
+
+  tidy:
+    dir: src
+    cmds:
+      - go mod tidy
+
+  prototest:
+    dir: test
+    cmds:
+      - buf generate

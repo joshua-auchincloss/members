@@ -1,0 +1,10 @@
+syntax = "proto3";
+package members.v1.registry.pkg;
+import "api/v1/common/def.proto";
+
+
+message NewVersionRequest {
+    string project_key=1;
+    string version=2;
+    repeated members.v1.common.RegisteredProto protos=3;
+}
