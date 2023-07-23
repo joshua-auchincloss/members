@@ -136,7 +136,8 @@ func (sq *Sql) Teardown() error {
 }
 
 func (sq *Sql) Setup(cfg config.ConfigProvider) error {
-	if cfg.GetConfig().Storage.Drop {
+	storg := cfg.GetConfig().Storage
+	if storg.Drop {
 		if err := sq.Teardown(); err != nil {
 			return err
 		}

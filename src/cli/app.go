@@ -57,7 +57,7 @@ var cmds = []*cli.Command{
 				fx.Provide(
 					config.New,
 				),
-				storage_fx.Setup,
+				storage_fx.Dependencies,
 				fx.Invoke(closer),
 			)
 			app.Run()

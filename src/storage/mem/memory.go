@@ -14,19 +14,17 @@ import (
 )
 
 var (
-	memtempl = "file::memory:?cache=shared"
-	fitempl  = "file::%s?cache=shared&mode=memory"
+	fitempl = "file:%s?cache=shared"
 )
 
 func New(prov config.ConfigProvider) (*bun.DB, error) {
 	fp := prov.GetConfig().Storage.URI
-
-	log.Print("in mem")
 	if utils.ZeroStr(fp) {
-		fp = memtempl
+		fp = fmt.Sprintf(fitempl, ":memory:")
 	} else {
 		fp = fmt.Sprintf(fitempl, fp)
 	}
+	log.Printf("using file: %s", fp)
 	sqldb, err := sql.Open(sqliteshim.ShimName, fp)
 	if err != nil {
 		return nil, err

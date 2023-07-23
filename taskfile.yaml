@@ -1,7 +1,6 @@
 version: "3"
 
 tasks:
-
   proto:
     dir: src
     cmds:
@@ -9,13 +8,13 @@ tasks:
 
   mysql:
     cmds:
-      - docker run 
-          -d 
-          --name=mysql 
-          -p 4900:4900  
-          --env="MYSQL_TCP_PORT=4900" 
-          --env="MYSQL_ROOT_PASSWORD=mypassword" 
-          mysql
+      - docker run
+        -d
+        --name=mysql
+        -p 4900:4900
+        --env="MYSQL_TCP_PORT=4900"
+        --env="MYSQL_ROOT_PASSWORD=mypassword"
+        mysql
 
   postgres:
     cmds:
@@ -40,37 +39,41 @@ tasks:
     cmds:
       - go run . schema
 
-  sqlite-schema:
+  memory-schema:
     dotenv:
       - ../config/sqlite.env
     dir: src
     cmds:
       - go run . schema
 
-  a:
-    dotenv: 
-      - ../config/postgres.env
-      - ../config/a.env
+  cluster:
     dir: src
     cmds:
-      - task: postgres-schema
+      - task $STORAGE_KIND-schema
       - go run . start
 
-  b:
-    dotenv: 
-      - ../config/sqlite.env
-      - ../config/b.env
-    dir: src
+  postgres-cluster:
+    dotenv:
+      - config/postgres.env
+      - config/a.env
     cmds:
-      - go run . start
+      - task cluster
 
-  c:
-    dotenv: 
-      - ../config/mysql.env
-      - ../config/a.env
-    dir: src
+  memory-cluster:
+    dotenv:
+      - config/sqlite.env
+      - config/b.env
     cmds:
-      - go run . start
+      - task cluster
+
+
+  mysql-cluster:
+    dotenv:
+      - config/mysql.env
+      - config/a.env
+    cmds:
+      - task cluster
+
 
   tidy:
     dir: src
