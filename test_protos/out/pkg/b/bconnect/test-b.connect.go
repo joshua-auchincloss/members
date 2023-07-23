@@ -7,10 +7,11 @@ package bconnect
 import (
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	http "net/http"
 	b "pkg/out/pkg/b"
 	strings "strings"
+
+	connect_go "github.com/bufbuild/connect-go"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

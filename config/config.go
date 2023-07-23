@@ -51,9 +51,9 @@ func (m *Members) GetService(key common.Service) *PortJoin {
 	switch key {
 	case common.ServiceRegistry:
 		return m.Registry
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 func getConfig(ctx *cli.Context) (*Config, error) {

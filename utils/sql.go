@@ -12,6 +12,8 @@ func QuoteCol(db *bun.DB, v string) string {
 	switch db.Dialect().Name() {
 	case dialect.MySQL:
 		quote = "`"
+	case dialect.MSSQL:
+		quote = "`"
 	}
 	return fmt.Sprintf("%s%s%s", quote, v, quote)
 }

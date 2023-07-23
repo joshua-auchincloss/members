@@ -2,8 +2,17 @@ version: "3"
 env:  
   run: go run ./cli
 tasks:
+  dev-deps:
+    cmds:
+      - pip install pre-commit
+      - go install github.com/go-critic/go-critic/cmd/gocritic@latest
+
+  precommit:
+    cmds:
+      - task: proto
+      - pre-commit run --all-files
+
   proto:
-    
     cmds:
       - buf generate
 
@@ -36,19 +45,16 @@ tasks:
   mysql-schema:
     dotenv:
       - env/mysql.env
-    
     cmds:
       - $run schema
 
   memory-schema:
     dotenv:
       - env/sqlite.env
-    
     cmds:
       - $run schema
 
   cluster:
-    
     cmds:
       - $run start
 

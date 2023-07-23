@@ -2,15 +2,9 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/dnephin/pre-commit-golang
-    rev: master
+    rev: v0.5.1
     hooks:
-      - id: go-fmt
-        args: [src]
-      - id: go-vet
-      - id: go-lint
-      - id: go-imports
-      - id: go-cyclo
-        args: [-over=15]
-      - id: validate-toml
-      - id: no-go-testing
       - id: go-mod-tidy
+      - id: go-imports
+      - id: go-fmt
+      - id: go-critic

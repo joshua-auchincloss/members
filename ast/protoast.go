@@ -58,10 +58,10 @@ func (pr *protoView) Parse() (*proto.Proto, error) {
 func (pr *protoView) Watch() {
 	for ev := range pr.events {
 		log.Printf("%+v", ev)
-		switch {
-		case ev.enum != nil:
-			pr.seen[ev.enum.Name] = *ev
-		}
+		// switch {
+		// case ev.enum != nil:
+		// 	pr.seen[ev.enum.Name] = *ev
+		// }
 	}
 }
 
