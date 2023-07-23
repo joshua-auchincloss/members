@@ -16,8 +16,7 @@ import (
 
 type (
 	Sql struct {
-		db  *bun.DB
-		sup StorageType
+		db *bun.DB
 	}
 	Initializer = func(prov config.ConfigProvider) (*bun.DB, error)
 )
@@ -26,8 +25,8 @@ var (
 	_ Store = ((*Sql)(nil))
 )
 
-func NewSql(db *bun.DB, sup StorageType) Store {
-	return &Sql{db, sup}
+func NewSql(db *bun.DB) Store {
+	return &Sql{db}
 }
 
 func runCreate[T interface{}](
@@ -63,12 +62,7 @@ func drop[T interface{}](sq *Sql, model T) {
 }
 
 func (sq *Sql) QuoteCol(v string) string {
-	quote := `"`
-	switch sq.sup {
-	case Mysql:
-		quote = "`"
-	}
-	return fmt.Sprintf("%s%s%s", quote, v, quote)
+	return utils.QuoteCol(sq.db, v)
 }
 
 func (sq *Sql) Template(str string, vs ...any) string {
@@ -76,11 +70,10 @@ func (sq *Sql) Template(str string, vs ...any) string {
 }
 
 func (sq *Sql) UpsertMembership(ctx context.Context, meta *common.Membership) error {
-	if _, err := sq.db.NewInsert().
-		Model(meta).
-		On(
-			"conflict (address, service) do update set last_health = excluded.last_health",
-		).Exec(context.TODO(), meta); err != sql.ErrNoRows {
+	base := sq.db.NewInsert().
+		Model(meta)
+	if _, err := base.
+		Exec(context.TODO(), meta); err != sql.ErrNoRows {
 		return err
 	}
 	return nil
@@ -107,7 +100,6 @@ func (sq *Sql) CreateProject(ctx context.Context, project *common.ProtoProject, 
 	project.Id = uuid.NewString()
 	proto.Id = uuid.NewString()
 	proto.Key = project.Id
-	log.Printf("%+v", project)
 	if _, err := sq.db.NewInsert().
 		Model(project).
 		Exec(ctx, project); err != nil && err != sql.ErrNoRows {
@@ -135,13 +127,7 @@ func (sq *Sql) Teardown() error {
 	return nil
 }
 
-func (sq *Sql) Setup(cfg config.ConfigProvider) error {
-	storg := cfg.GetConfig().Storage
-	if storg.Drop {
-		if err := sq.Teardown(); err != nil {
-			return err
-		}
-	}
+func (sq *Sql) create() error {
 	if err := runCreate(sq, (*common.Membership)(nil)); err != nil {
 		return err
 	}
@@ -169,7 +155,21 @@ func (sq *Sql) Setup(cfg config.ConfigProvider) error {
 	}); err != nil {
 		return err
 	}
+	return nil
+}
 
+func (sq *Sql) Setup(cfg config.ConfigProvider) error {
+	storg := cfg.GetConfig().Storage
+	if storg.Drop {
+		if err := sq.Teardown(); err != nil {
+			return err
+		}
+	}
+	if storg.Create {
+		if err := sq.create(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

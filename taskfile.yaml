@@ -1,8 +1,9 @@
 version: "3"
-
+env:  
+  run: go run ./cli
 tasks:
   proto:
-    dir: src
+    
     cmds:
       - buf generate
 
@@ -27,56 +28,55 @@ tasks:
 
   postgres-schema:
     dotenv:
-      - ../config/postgres.env
-    dir: src
+      - env/postgres.env
+    
     cmds:
-      - go run . schema
+      - $run schema
 
   mysql-schema:
     dotenv:
-      - ../config/mysql.env
-    dir: src
+      - env/mysql.env
+    
     cmds:
-      - go run . schema
+      - $run schema
 
   memory-schema:
     dotenv:
-      - ../config/sqlite.env
-    dir: src
+      - env/sqlite.env
+    
     cmds:
-      - go run . schema
+      - $run schema
 
   cluster:
-    dir: src
+    
     cmds:
-      - task $STORAGE_KIND-schema
-      - go run . start
+      - $run start
 
   postgres-cluster:
     dotenv:
-      - config/postgres.env
-      - config/a.env
+      - env/postgres.env
+      - env/a.env
     cmds:
       - task cluster
 
   memory-cluster:
     dotenv:
-      - config/sqlite.env
-      - config/b.env
+      - env/sqlite.env
+      - env/b.env
     cmds:
       - task cluster
 
 
   mysql-cluster:
     dotenv:
-      - config/mysql.env
-      - config/a.env
+      - env/mysql.env
+      - env/a.env
     cmds:
       - task cluster
 
 
   tidy:
-    dir: src
+    
     cmds:
       - go mod tidy
 

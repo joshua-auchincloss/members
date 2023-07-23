@@ -1,7 +1,7 @@
 package main
 
 import (
-	"members/cli"
+	"members/cli/app"
 	"os"
 )
 
@@ -9,7 +9,7 @@ import (
 // "os"
 
 func main() {
-	if err := cli.BuildApp().Run(os.Args); err != nil {
+	if err := app.BuildApp().Run(os.Args); err != nil {
 		panic(err)
 	}
 

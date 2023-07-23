@@ -1,4 +1,4 @@
-package cli
+package app
 
 import (
 	"log"
@@ -13,7 +13,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	// "members/raft"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -57,7 +56,7 @@ var cmds = []*cli.Command{
 				fx.Provide(
 					config.New,
 				),
-				storage_fx.Dependencies,
+				storage_fx.Setup,
 				fx.Invoke(closer),
 			)
 			app.Run()

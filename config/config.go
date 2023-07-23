@@ -24,6 +24,7 @@ type (
 		SSL      bool   `mapstructure:"ssl" env:"SSL,overwrite"`
 		Drop     bool   `mapstructure:"drop" env:"DROP,overwrite"`
 		Debug    bool   `mapstructure:"debug" env:"DEBUG,overwrite"`
+		Create   bool   `mapstructure:"create" env:"CREATE,overwrite"`
 	}
 
 	PortJoin struct {

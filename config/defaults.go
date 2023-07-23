@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
@@ -50,7 +51,11 @@ func uint32Getter(ctx *cli.Context, name string) interface{} {
 
 func uint32SliceGetter(ctx *cli.Context, name string) interface{} {
 	u3 := []uint32{}
-	for _, v := range ctx.Uint64Slice(name) {
+	u6 := ctx.Uint64Slice(name)
+	if len(u6) == 0 {
+		return nil
+	}
+	for _, v := range u6 {
 		u3 = append(u3, uint32(v))
 	}
 	return u3
@@ -64,8 +69,17 @@ func stringGetter(ctx *cli.Context, name string) interface{} {
 	return v
 }
 
+func boolGetter(ctx *cli.Context, name string) interface{} {
+	v := ctx.Bool(name)
+	return v
+}
+
 func stringSliceGetter(ctx *cli.Context, name string) interface{} {
-	return ctx.StringSlice(name)
+	slc := ctx.StringSlice(name)
+	if len(slc) == 0 {
+		return nil
+	}
+	return slc
 }
 
 func (vx *default_v[T]) withOverride(ctx *cli.Context) {
@@ -79,7 +93,7 @@ func (vx *default_v[T]) withOverride(ctx *cli.Context) {
 }
 
 var (
-	ServicesDefn = default_v[[]string]{"services", "SERVICES", stringGetter, []string{"all"}}
+	ServicesDefn = default_v[[]string]{"services", "SERVICES", stringSliceGetter, []string{"all"}}
 
 	MemberDefn  = default_v[uint32]{"members-member", "MEMBER_PORT", uint32Getter, 8091}
 	KnownParent = default_v[string]{"members-known", "KNOWN_HOST", stringGetter, ""}
@@ -88,14 +102,16 @@ var (
 	RegistrySvcDefn    = default_v[[]uint32]{"members-registry-service", "MEMBERS_REGISTRY_SERVICE", uint32SliceGetter, []uint32{9009}}
 	RegistryHealthDefn = default_v[[]uint32]{"members-registry-health", "MEMBERS_REGISTRY_HEALTH", uint32SliceGetter, []uint32{4200}}
 
-	StoreTypeDefn = default_v[string]{"storage-type", "STORAGE_TYPE", stringGetter, "memory"}
-	StoreUriDefn  = default_v[string]{"storage-uri", "STORAGE_URI", stringGetter, ""}
-	StoreUserDefn = default_v[string]{"storage-username", "STORAGE_USERNAME", stringGetter, ""}
-	StorePwDefn   = default_v[string]{"storage-password", "STORAGE_PASSWORD", stringGetter, ""}
-	StorePortDefn = default_v[uint32]{"storage-port", "STORAGE_PORT", uint32Getter, 5432}
-	StoreDbDefn   = default_v[string]{"storage-db", "STORAGE_DBNAME", stringGetter, ""}
-	StoreSslDefn  = default_v[bool]{"storage-ssl", "STORAGE_SSL", stringGetter, false}
-	StoreDropDefn = default_v[bool]{"storage-drop", "STORAGE_DROP", stringGetter, false}
+	StoreTypeDefn   = default_v[string]{"storage-type", "STORAGE_TYPE", stringGetter, "memory"}
+	StoreUriDefn    = default_v[string]{"storage-uri", "STORAGE_URI", stringGetter, ""}
+	StoreUserDefn   = default_v[string]{"storage-username", "STORAGE_USERNAME", stringGetter, ""}
+	StorePwDefn     = default_v[string]{"storage-password", "STORAGE_PASSWORD", stringGetter, ""}
+	StorePortDefn   = default_v[uint32]{"storage-port", "STORAGE_PORT", uint32Getter, 5432}
+	StoreDbDefn     = default_v[string]{"storage-db", "STORAGE_DBNAME", stringGetter, ""}
+	StoreSslDefn    = default_v[bool]{"storage-ssl", "STORAGE_SSL", boolGetter, false}
+	StoreDropDefn   = default_v[bool]{"storage-drop", "STORAGE_DROP", boolGetter, false}
+	StoreDebugDefn  = default_v[bool]{"storage-debug", "STORAGE_DEBUG", boolGetter, false}
+	StoreCreateDefn = default_v[bool]{"storage-create", "STORAGE_CREATE", boolGetter, false}
 
 	uint_opts = []default_v[uint32]{
 		MemberDefn,
@@ -119,6 +135,8 @@ var (
 	bool_opts = []default_v[bool]{
 		StoreSslDefn,
 		StoreDropDefn,
+		StoreCreateDefn,
+		StoreDebugDefn,
 	}
 
 	slice_opts = []default_v[[]string]{
@@ -139,6 +157,8 @@ var (
 		&StoreDbDefn,
 		&StoreSslDefn,
 		&StoreDropDefn,
+		&StoreCreateDefn,
+		&StoreDebugDefn,
 		&ServicesDefn,
 	}
 )
@@ -149,36 +169,45 @@ func Flags() []cli.Flag {
 		flags = append(flags, &cli.Uint64Flag{
 			Name:    def.Key,
 			EnvVars: []string{def.Env},
+			Value:   uint64(def.value),
 		})
 	}
 	for _, def := range string_opts {
 		flags = append(flags, &cli.StringFlag{
 			Name:    def.Key,
 			EnvVars: []string{def.Env},
+			Value:   def.value,
 		})
 	}
 	for _, def := range bool_opts {
 		flags = append(flags, &cli.BoolFlag{
 			Name:    def.Key,
 			EnvVars: []string{def.Env},
+			Value:   def.value,
 		})
 	}
 
 	for _, def := range slice_opts {
-		flags = append(flags, &cli.StringFlag{
+		slc := cli.StringSlice{}
+		for _, v := range def.value {
+			slc.Set(v)
+		}
+		flags = append(flags, &cli.StringSliceFlag{
 			Name:    def.Key,
 			EnvVars: []string{def.Env},
+			Value:   &slc,
 		})
 	}
 
 	for _, def := range uint_slc_opts {
-		u6 := []uint64{}
+		slc := cli.Uint64Slice{}
 		for _, v := range def.value {
-			u6 = append(u6, uint64(v))
+			slc.Set(strconv.Itoa(int(v)))
 		}
 		flags = append(flags, &cli.Uint64SliceFlag{
 			Name:    def.Key,
 			EnvVars: []string{def.Env},
+			Value:   &slc,
 		})
 	}
 	return flags
