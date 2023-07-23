@@ -21,7 +21,7 @@ type (
 		bun.BaseModel `bun:"registration_meta"`
 
 		Id           string    `bun:"id,pk"`
-		ProjectKey   string    `bun:"project_key"`
+		Key          string    `bun:"key"`
 		Version      string    `bun:"version"`
 		RegisteredAt time.Time `bun:"registration,default:current_timestamp"`
 	}
@@ -34,7 +34,7 @@ type (
 		Owner    string    `bun:"owner"`
 		Creation time.Time `bun:"creation,default:current_timestamp"`
 
-		Meta []*ProtoMeta `bun:"rel:has-many,join:id=project_key"`
+		Meta []*ProtoMeta `bun:"rel:has-many,join:id=key"`
 	}
 )
 
@@ -43,14 +43,6 @@ func (*ProtoMeta) AfterCreateTable(ctx context.Context, query *bun.CreateTableQu
 		Model((*ProtoMeta)(nil)).
 		Index("proto_meta_keyed_idx").
 		Column("key").
-		Exec(ctx)
-	return err
-}
-
-func (*ProtoMeta) BeforeDropTable(ctx context.Context, query *bun.DropTableQuery) error {
-	_, err := query.DB().NewDropIndex().
-		Model((*ProtoMeta)(nil)).
-		Index("proto_meta_keyed_idx").
 		Exec(ctx)
 	return err
 }

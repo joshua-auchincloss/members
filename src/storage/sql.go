@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"members/common"
 	"members/config"
@@ -15,7 +16,8 @@ import (
 
 type (
 	Sql struct {
-		db *bun.DB
+		db  *bun.DB
+		sup StorageType
 	}
 	Initializer = func(prov config.ConfigProvider) (*bun.DB, error)
 )
@@ -24,8 +26,8 @@ var (
 	_ Store = ((*Sql)(nil))
 )
 
-func NewSql(db *bun.DB) Store {
-	return &Sql{db}
+func NewSql(db *bun.DB, sup StorageType) Store {
+	return &Sql{db, sup}
 }
 
 func runCreate[T interface{}](
@@ -50,11 +52,30 @@ func runCreate[T interface{}](
 }
 
 func drop[T interface{}](sq *Sql, model T) {
-	sq.db.NewDropTable().
-		Model(model).Exec(context.TODO())
+	if _, err := sq.db.
+		NewDropTable().
+		Model(model).
+		Cascade().
+		Exec(context.TODO()); err != nil {
+		// panic(err)
+		log.Print(err)
+	}
 }
 
-func (sq *Sql) UpsertMembership(meta *common.Membership) error {
+func (sq *Sql) QuoteCol(v string) string {
+	quote := `"`
+	switch sq.sup {
+	case Mysql:
+		quote = "`"
+	}
+	return fmt.Sprintf("%s%s%s", quote, v, quote)
+}
+
+func (sq *Sql) Template(str string, vs ...any) string {
+	return fmt.Sprintf(str, vs...)
+}
+
+func (sq *Sql) UpsertMembership(ctx context.Context, meta *common.Membership) error {
 	if _, err := sq.db.NewInsert().
 		Model(meta).
 		On(
@@ -65,7 +86,7 @@ func (sq *Sql) UpsertMembership(meta *common.Membership) error {
 	return nil
 }
 
-func (sq *Sql) GetMembers(kind ...common.Service) ([]*common.Membership, error) {
+func (sq *Sql) GetMembers(ctx context.Context, kind ...common.Service) ([]*common.Membership, error) {
 	ok := utils.OkSpread(kind)
 	var out []*common.Membership
 	base := sq.db.NewSelect().
@@ -82,18 +103,44 @@ func (sq *Sql) GetMembers(kind ...common.Service) ([]*common.Membership, error) 
 	return out, nil
 }
 
+func (sq *Sql) CreateProject(ctx context.Context, project *common.ProtoProject, proto *common.ProtoMeta) error {
+	project.Id = uuid.NewString()
+	proto.Id = uuid.NewString()
+	proto.Key = project.Id
+	log.Printf("%+v", project)
+	if _, err := sq.db.NewInsert().
+		Model(project).
+		Exec(ctx, project); err != nil && err != sql.ErrNoRows {
+		log.Print(err)
+		return err
+	}
+	if _, err := sq.db.NewInsert().
+		Model(proto).
+		Exec(ctx, proto); err != nil && err != sql.ErrNoRows {
+		log.Print(err)
+		return err
+	}
+	return nil
+}
+
+func (sq *Sql) Teardown() error {
+	for _, tbl := range []interface{}{
+		(*common.Membership)(nil),
+		(*common.ProtoProject)(nil),
+		(*common.RegisteredProto)(nil),
+		(*common.ProtoMeta)(nil),
+	} {
+		drop(sq, tbl)
+	}
+	return nil
+}
+
 func (sq *Sql) Setup(cfg config.ConfigProvider) error {
 	if cfg.GetConfig().Storage.Drop {
-		for _, tbl := range []interface{}{
-			(*common.Membership)(nil),
-			(*common.ProtoProject)(nil),
-			(*common.ProtoMeta)(nil),
-			(*common.RegisteredProto)(nil),
-		} {
-			drop(sq, tbl)
+		if err := sq.Teardown(); err != nil {
+			return err
 		}
 	}
-
 	if err := runCreate(sq, (*common.Membership)(nil)); err != nil {
 		return err
 	}
@@ -101,12 +148,23 @@ func (sq *Sql) Setup(cfg config.ConfigProvider) error {
 		return err
 	}
 	if err := runCreate(sq, (*common.ProtoMeta)(nil), func(ctq *bun.CreateTableQuery) *bun.CreateTableQuery {
-		return ctq.ForeignKey(`("project_key") REFERENCES "repos" ("id") ON DELETE CASCADE`)
+		return ctq.ForeignKey(
+			sq.Template(
+				"(%s) references repos (%s) on update cascade on delete cascade",
+				sq.QuoteCol("key"),
+				sq.QuoteCol("id"),
+			),
+		)
 	}); err != nil {
 		return err
 	}
 	if err := runCreate(sq, (*common.RegisteredProto)(nil), func(ctq *bun.CreateTableQuery) *bun.CreateTableQuery {
-		return ctq.ForeignKey(`("id") REFERENCES "registration_meta" ("id") ON DELETE CASCADE`)
+		return ctq.ForeignKey(
+			sq.Template(
+				"(%s) references registration_meta (%s) on update cascade on delete cascade",
+				sq.QuoteCol("id"),
+				sq.QuoteCol("id"),
+			))
 	}); err != nil {
 		return err
 	}
@@ -122,7 +180,7 @@ func (sq *Sql) GetHandler(key string) (*common.RegisteredProto, error) {
 	return &common.RegisteredProto{}, nil
 }
 
-func (sq *Sql) RegisterProto(proto *common.ProtoMeta, data *common.RegisteredProto) error {
+func (sq *Sql) RegisterProto(ctx context.Context, proto *common.ProtoMeta, data *common.RegisteredProto) error {
 	id := uuid.NewString()
 	proto.RegisteredAt = time.Now().UTC()
 	proto.Id = id

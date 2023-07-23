@@ -1,41 +1,42 @@
-package pgx
+package mysql
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"members/config"
 	"members/utils"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/dialect/mysqldialect"
 )
 
 var (
-	pghost           = "localhost"
-	pgport    uint32 = 5432
-	defaultdb        = "postgres"
+	mysqlhost        = "localhost"
+	mysqlport uint32 = 4900
+	mysqldb          = "mysql"
 )
 
 func New(prov config.ConfigProvider) (*bun.DB, error) {
 	cfg := prov.GetConfig()
 	host := cfg.Storage.URI
 	if utils.ZeroStr(host) {
-		host = pghost
+		host = mysqlhost
 	}
 	port := cfg.Storage.Port
 	if utils.IsZero(port) {
-		port = pgport
+		port = mysqlport
 	}
 	dbname := cfg.Storage.DB
 	if utils.ZeroStr(dbname) {
-		dbname = defaultdb
+		dbname = mysqldb
 	}
 	var sslstr string
 	if cfg.Storage.SSL {
 		sslstr = "?sslmode=enabled"
 	}
-	connstr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s%s",
+	connstr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s%s",
 		cfg.Storage.Username,
 		cfg.Storage.Password,
 		host,
@@ -43,11 +44,11 @@ func New(prov config.ConfigProvider) (*bun.DB, error) {
 		dbname,
 		sslstr,
 	)
-	config, err := pgx.ParseConfig(connstr)
+	log.Print(connstr)
+	sqldb, err := sql.Open("mysql", connstr)
 	if err != nil {
 		return nil, err
 	}
-	sqldb := stdlib.OpenDB(*config)
-	db := bun.NewDB(sqldb, pgdialect.New())
+	db := bun.NewDB(sqldb, mysqldialect.New())
 	return db, nil
 }

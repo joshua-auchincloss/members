@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"errors"
 	"log"
 	"members/common"
 	"members/grpc/api/v1/health/healthconnect"
@@ -28,6 +29,8 @@ type (
 
 var (
 	_ service.Service = ((*healthService)(nil))
+
+	done = errors.New("done")
 )
 
 var (
@@ -46,43 +49,55 @@ func (h *healthService) WithBase(base service.BaseService) {
 	h.BaseService = base
 }
 
+func (h *healthService) loop() error {
+	if h.status != common.StatusStarted {
+		return done
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), default_polling/2)
+	defer cancel()
+	if err := h.store.UpsertMembership(context.TODO(), &common.Membership{
+		Service:        h.GetKey(),
+		PublicAddress:  h.GetService(),
+		JoinTime:       time.Now(),
+		LastHealthTime: time.Now(),
+	}); err != nil {
+		log.Printf("err: %s", err)
+		return err
+	} else {
+		log.Print("upserted")
+	}
+
+	if memb, err := h.store.GetMembers(ctx); err != nil {
+		log.Print(err)
+		return err
+	} else {
+		for _, mem := range memb {
+			log.Printf(
+				"%+v", *mem,
+			)
+		}
+	}
+
+	log.Printf("health %d: serving", h.GetKey())
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-h.ticker.C:
+	}
+	return nil
+}
+
 func (h *healthService) Start(ctx context.Context) {
 	pth, handle := healthconnect.NewHealthHandler(h)
 	go service.GrpcStarter(h.GetHealth(), pth, handle)
 	if h.status < common.StatusStarted {
 		h.setStatus(common.StatusStarted)
 		for {
-			if h.status != common.StatusStarted {
-				return
-			}
-			if err := h.store.UpsertMembership(&common.Membership{
-				Service:        h.GetKey(),
-				PublicAddress:  h.GetService(),
-				JoinTime:       time.Now(),
-				LastHealthTime: time.Now(),
-			}); err != nil {
-				log.Printf("err: %s", err)
-			} else {
-				log.Print("upserted")
-			}
-
-			if memb, err := h.store.GetMembers(); err != nil {
+			if err := h.loop(); err != nil {
 				log.Print(err)
-			} else {
-				for _, mem := range memb {
-					log.Printf(
-						"%+v", *mem,
-					)
-				}
-			}
-
-			log.Printf("health %d: serving", h.GetKey())
-			select {
-			case <-ctx.Done():
+				h.GetErrs() <- err
 				return
-			case <-h.ticker.C:
 			}
-
 		}
 	}
 }

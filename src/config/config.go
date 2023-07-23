@@ -23,6 +23,7 @@ type (
 		DB       string `mapstructure:"db" env:"DB,overwrite"`
 		SSL      bool   `mapstructure:"ssl" env:"SSL,overwrite"`
 		Drop     bool   `mapstructure:"drop" env:"DROP,overwrite"`
+		Debug    bool   `mapstructure:"debug" env:"DEBUG,overwrite"`
 	}
 
 	PortJoin struct {

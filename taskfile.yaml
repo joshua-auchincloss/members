@@ -7,6 +7,16 @@ tasks:
     cmds:
       - buf generate
 
+  mysql:
+    cmds:
+      - docker run 
+          -d 
+          --name=mysql 
+          -p 4900:4900  
+          --env="MYSQL_TCP_PORT=4900" 
+          --env="MYSQL_ROOT_PASSWORD=mypassword" 
+          mysql
+
   postgres:
     cmds:
       - docker run
@@ -16,14 +26,21 @@ tasks:
         -p 5432:5432
         postgres
 
-  postgres:
+  postgres-schema:
     dotenv:
       - ../config/postgres.env
     dir: src
     cmds:
       - go run . schema
 
-  sqlite:
+  mysql-schema:
+    dotenv:
+      - ../config/mysql.env
+    dir: src
+    cmds:
+      - go run . schema
+
+  sqlite-schema:
     dotenv:
       - ../config/sqlite.env
     dir: src
@@ -36,13 +53,21 @@ tasks:
       - ../config/a.env
     dir: src
     cmds:
-      - task: postgres
+      - task: postgres-schema
       - go run . start
 
   b:
     dotenv: 
-      - ../config/postgres.env
+      - ../config/sqlite.env
       - ../config/b.env
+    dir: src
+    cmds:
+      - go run . start
+
+  c:
+    dotenv: 
+      - ../config/mysql.env
+      - ../config/a.env
     dir: src
     cmds:
       - go run . start

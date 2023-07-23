@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"members/common"
@@ -21,7 +22,7 @@ var (
 		fx.Invoke(
 			newList,
 			ensure_registry,
-			startNetwork,
+			// startNetwork,
 		),
 	)
 )
@@ -49,14 +50,29 @@ func newList(prov config.ConfigProvider) error {
 
 func ensure_registry(reg *P2PRegistry) {
 	log.Print(reg.store.Registered("abc"))
-	log.Print(reg.store.RegisterProto(
-		&common.ProtoMeta{
-			ProjectKey: "abc",
-			Version:    "v0.0.1",
-		},
-		&common.RegisteredProto{
-			Data: []byte{},
-		}))
+	project := common.ProtoProject{
+		Name:  "abc-repo",
+		Owner: "ja",
+	}
+	proto := common.ProtoMeta{
+		Key:     "abc",
+		Version: "v0.0.1",
+	}
+	reg.store.CreateProject(
+		context.TODO(),
+		&project,
+		&proto,
+	)
+	b := `syntax = "proto3"`
+	log.Print(
+		reg.store.RegisterProto(
+			context.TODO(),
+			&proto,
+			&common.RegisteredProto{
+				FileName: "test.proto",
+				Data:     []byte(b),
+			},
+		))
 }
 
 func startNetwork(prov config.ConfigProvider, ar *service.SvcFramework) {

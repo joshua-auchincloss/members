@@ -9,7 +9,7 @@ import (
 var (
 	Dependencies = fx.Module(
 		"storage",
-		fx.Provide(New),
+		fx.Provide(New, storage.WithStore),
 	)
 	Setup = fx.Module(
 		"setup",

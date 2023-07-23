@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"members/common"
 	"members/config"
 	"members/storage"
@@ -27,8 +28,8 @@ func newRegistry(prov config.ConfigProvider, store storage.Store) *P2PRegistry {
 		store,
 	}
 }
-func (h *P2PRegistry) ProposeHandler(meta *common.ProtoMeta, proto *common.RegisteredProto) error {
-	return h.store.RegisterProto(meta, proto)
+func (h *P2PRegistry) ProposeHandler(ctx context.Context, meta *common.ProtoMeta, proto *common.RegisteredProto) error {
+	return h.store.RegisterProto(ctx, meta, proto)
 }
 
 type User struct {
