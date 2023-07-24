@@ -11,4 +11,10 @@ var (
 			New,
 		),
 	)
+
+	CliCacheCfg = fx.Module(
+		"cli-cache-cfg",
+		Module,
+		fx.Invoke(ensureFileCache("cli.cache")),
+	)
 )

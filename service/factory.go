@@ -13,8 +13,8 @@ import (
 
 type (
 	Service interface {
-		Start(ctx context.Context)
-		Stop() error
+		Start(ctx context.Context) error
+		Stop(ctx context.Context) error
 		Chain(ctx context.Context) error
 		WithChainer(
 			svc ...Service,

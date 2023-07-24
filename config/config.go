@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"members/common"
 	"os"
@@ -33,7 +35,22 @@ type (
 		Health  []uint32 `mapstructure:"health" env:"HEALTH,overwrite"`
 	}
 
+	Tls struct {
+		ServerName string   `mapstructure:"name" env:"NAME,overwrite"`
+		CertFile   string   `mapstructure:"cert" env:"CERT,overwrite"`
+		KeyFile    string   `mapstructure:"key" env:"KEY,overwrite"`
+		Ca         []string `mapstructure:"ca" env:"CA,overwrite"`
+	}
+
+	TlsConfig struct {
+		Enabled    bool `env:"ENABLED"`
+		Validation bool `env:"VALIDATION"`
+		Registry   *Tls `env:",prefix=REGISTRY_"`
+		Health     *Tls `env:",prefix=HEALTH_"`
+	}
+
 	Members struct {
+		Protocol string    `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
 		Bind     string    `mapstructure:"bind" env:"BIND,overwrite"`
 		Join     []string  `mapstructure:"join" env:"JOIN,overwrite"`
 		Member   uint32    `mapstructure:"member" env:"MEMBER,overwrite"`
@@ -44,9 +61,51 @@ type (
 		Services []string               `mapstructure:"services" env:"SERVICES,overwrite"`
 		Members  *Members               `mapstructure:"members" env:",prefix=CLUSTER_"`
 		Storage  *Storage               `mapstructure:"storage" env:",prefix=STORAGE_"`
+		Tls      *TlsConfig             `mapstructure:"tls" env:",prefix=TLS_"`
 		List     *memberlist.Memberlist `mapstructure:"-"`
 	}
 )
+
+func (t *TlsConfig) GetService(key common.Service) *Tls {
+	switch key {
+	case common.ServiceRegistry:
+		return t.Registry
+	case common.ServiceHealth:
+		return t.Health
+	}
+	return nil
+}
+
+func (t *Tls) LoadCA() (*x509.CertPool, error) {
+	pool := x509.NewCertPool()
+
+	for _, fi := range t.Ca {
+		bts, err := os.ReadFile(fi)
+		if err != nil {
+			return nil, err
+		}
+		if ok := pool.AppendCertsFromPEM(bts); !ok {
+			return nil, fmt.Errorf("invalid ca %s", fi)
+		}
+	}
+	return pool, nil
+}
+
+func (t *Tls) Build() (*tls.Config, error) {
+	tc, err := tls.LoadX509KeyPair(t.CertFile, t.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	pool, err := t.LoadCA()
+	if err != nil {
+		return nil, err
+	}
+	return &tls.Config{
+		ServerName:   t.ServerName,
+		Certificates: []tls.Certificate{tc},
+		RootCAs:      pool,
+	}, nil
+}
 
 func (m *Members) GetService(key common.Service) *PortJoin {
 	switch key {
@@ -74,36 +133,6 @@ func getConfig(ctx *cli.Context) (*Config, error) {
 	if err := envconfig.Process(ctx.Context, &cfg); err != nil {
 		return nil, err
 	}
-	log.Printf("config: %s", cfg.String())
+	log.Info().Interface("config", cfg).Send()
 	return &cfg, nil
-}
-
-func (cfg *Config) String() string {
-	return fmt.Sprintf(`{
-	Members: %s,
-	Services: %+v,
-	Storage: %+v
-}`, cfg.Members.String(),
-		cfg.Services,
-		*cfg.Storage)
-}
-
-func (h *PortJoin) String() string {
-	return fmt.Sprintf(`{
-		Health: %+v,
-		Service: %+v,
-}`, h.Health, h.Service)
-}
-
-func (m *Members) String() string {
-	return fmt.Sprintf(`{
-	Bind: %+v,
-	Member: %+v,
-	Join: %+v
-	Registry: %+v
-}`, m.Bind,
-		m.Member,
-		m.Join,
-		m.Registry.String(),
-	)
 }

@@ -26,13 +26,17 @@ func (h *registryService) WithBase(base service.BaseService) {
 	h.BaseService = base
 }
 
-func (h *registryService) Start(ctx context.Context) {
+func (h *registryService) Start(ctx context.Context) error {
 	pth, handle := registryconnect.NewRegistryHandler(h)
-	go service.GrpcStarter(h.GetService(), pth, handle)
-	h.LoopedStarter(ctx)
+	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
+	if err != nil {
+		return err
+	}
+	go h.LoopedStarter(ctx, clean)
+	return nil
 }
 
-func (h *registryService) Stop() error {
+func (h *registryService) Stop(ctx context.Context) error {
 	log.Print("registry stopping")
 	return nil
 }

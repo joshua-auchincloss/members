@@ -2,26 +2,40 @@ package service
 
 import (
 	"context"
+	server "members/http"
 	"net/http"
-
-	"github.com/rs/zerolog/log"
-
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"time"
 )
 
-func GrpcStarter(addr, path string, handler http.Handler) func(ctx context.Context) error {
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	if err := http.ListenAndServe(
+func (h *BaseService) GrpcStarter(
+	addr, path string, handler http.Handler) (func(ctx context.Context) error, error) {
+	cfg := h.prov.GetConfig()
+	tc := cfg.Tls.GetService(h.key)
+	srv, err := server.New(
+		h.prov,
+		tc,
+		h.watcher,
 		addr,
-		h2c.NewHandler(mux, &http2.Server{}),
-	); err != nil {
-		log.Print("err")
-		return nil
+		handler,
+	)
+	if err != nil {
+		return nil, err
 	}
+	ch := srv.Start()
+	h.WithLoop(
+		func(ctx context.Context) error {
+			sub, cancel := context.WithTimeout(ctx, time.Millisecond*50)
+			defer cancel()
+			select {
+			case <-sub.Done():
+			case err := <-ch:
+				h.logger.Err(err).Msg("here")
+				return err
+			}
+			return nil
+		},
+	)
 	return func(ctx context.Context) error {
-
-		return nil
-	}
+		return srv.Stop(ctx, time.Second*5)
+	}, nil
 }

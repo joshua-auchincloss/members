@@ -2,6 +2,21 @@ version: "3"
 env:
   run: go run ./cli
 tasks:
+  ca:
+    dir: test_certs
+    cmds:
+      - openssl genrsa -aes256 -out ca-key.pem 4096
+      - openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem
+
+  cert:
+    dir: test_certs
+    cmds:
+      - task: ca
+      - openssl genrsa -out client-key.pem 4096
+      - openssl req -subj '/CN=localhost' -new -key client-key.pem -out client.csr
+      - echo subjectAltName = IP:127.0.0.1,DNS:localhost > extfile.cnf
+      - openssl x509 -req -days 365 -sha256 -in client.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out client-cert.pem -extfile extfile.cnf
+
   dev-deps:
     cmds:
       - pip install pre-commit
@@ -55,8 +70,17 @@ tasks:
       - $run schema
 
   cluster:
+    dotenv:
+      - env/tls.env
     cmds:
-      - $run start
+      - $run cluster start
+
+  health:
+    dotenv:
+      - env/tls.env
+    cmds:
+      - $run cluster health
+       --address 127.0.0.1:4004  --tls true
 
   postgres-cluster:
     dotenv:

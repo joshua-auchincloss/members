@@ -17,6 +17,7 @@ type (
 		EnsureList(li *memberlist.Memberlist) error
 		GetList() *memberlist.Memberlist
 		HostPort(port uint32) string
+		EnsureFileCache(fn string)
 	}
 
 	configProvider struct {
@@ -43,6 +44,21 @@ func New(ctx *cli.Context) (ConfigProvider, error) {
 		cfg:  cfg,
 		mls:  nil,
 	}, nil
+}
+
+func ensureFileCache(name string) func(prov ConfigProvider) {
+	return func(prov ConfigProvider) {
+		prov.EnsureFileCache(name)
+	}
+}
+
+func (prov *configProvider) EnsureFileCache(fn string) {
+	*prov.GetConfig().Storage = Storage{
+		Kind:   "sqlite",
+		URI:    fn,
+		Drop:   false,
+		Create: false,
+	}
 }
 
 func (prov *configProvider) GetConfig() *Config {

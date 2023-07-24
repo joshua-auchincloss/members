@@ -37,7 +37,6 @@ func (h *healthService) WithBase(base service.BaseService) {
 }
 
 func (h *healthService) loop(ctx context.Context) error {
-
 	ctx, cancel := context.WithTimeout(ctx, default_polling/2)
 	defer cancel()
 	memb := &common.Membership{
@@ -66,17 +65,22 @@ func (h *healthService) loop(ctx context.Context) error {
 	return nil
 }
 
-func (h *healthService) Start(ctx context.Context) {
+func (h *healthService) Start(ctx context.Context) error {
 	pth, handle := healthconnect.NewHealthHandler(h)
-	go service.GrpcStarter(h.GetHealth(), pth, handle)
-	h.LoopedStarter(
+	clean, err := h.GrpcStarter(h.GetHealth(), pth, handle)
+	if err != nil {
+		return err
+	}
+	go h.LoopedStarter(
 		ctx,
+		clean,
 		func(ctx context.Context) error {
 			return h.loop(ctx)
 		},
 	)
+	return nil
 }
-func (h *healthService) Stop() error {
+func (h *healthService) Stop(ctx context.Context) error {
 	h.GetLogger().Print("health stopping")
 	return nil
 }

@@ -10,3 +10,7 @@ plugins:
   - plugin: buf.build/bufbuild/connect-go
     out: grpc
     opt: paths=source_relative
+  - plugin: buf.build/grpc/go:v1.3.0
+    out: grpc
+    opt:
+      - paths=source_relative

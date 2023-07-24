@@ -14,18 +14,24 @@ import (
 )
 
 type (
-	chain       = func(ctx context.Context) error
+	Chain       = func(ctx context.Context) error
 	BaseService struct {
 		prov    config.ConfigProvider
 		mu      *sync.Mutex
 		key     common.Service
+		watcher errs.Watcher
 		errs    chan error
+
 		status  common.Status
 		health  string
 		service string
 
-		chain   chain
-		cleanup func() error
+		// chain startup
+		start Chain
+		// chain loop events
+		next Chain
+		// chain cleanup events
+		cleanup Chain
 
 		tick *time.Ticker
 
@@ -33,13 +39,11 @@ type (
 
 		logger *zerolog.Logger
 	}
-
-	loop_next = func(context.Context) error
 )
 
 var (
 	poll_freq time.Duration = time.Millisecond * 500
-	done                    = errors.New("done")
+	errDone                 = errors.New("done")
 )
 
 func (s *BaseService) SetStatus(status common.Status) {
@@ -83,44 +87,63 @@ func (s *BaseService) Name() string {
 
 func (s *BaseService) loop(ctx context.Context) error {
 	if s.status != common.StatusStarted {
-		return done
+		return errDone
 	}
 	select {
 	case <-ctx.Done():
 		s.logger.Info().Msg("closing")
-		return done
+		return errDone
 	default:
 		return nil
 	}
 }
 
-func (s *BaseService) LoopedStarter(ctx context.Context, chain ...loop_next) error {
-	s.SetStatus(common.StatusStarted)
-	var next loop_next
-	if len(chain) > 0 {
-		next = s.loop
-		for n, ch := range chain {
-			prev := next
-			next = func(ctx context.Context) error {
-				s.logger.Debug().Msgf("level %d", n)
+/*
+Whether to chain the next iteration or start cleaning up the server
+
+At the core, it always checks the status of the server and whether the cleanup signal is received
+*/
+func (s *BaseService) WithLoop(loop ...Chain) {
+	var chain Chain
+	if s.next == nil {
+		chain = s.loop
+	} else {
+		chain = s.next
+	}
+	if len(loop) > 0 {
+		for n, next := range loop {
+			prev := chain
+			chain = func(ctx context.Context) error {
+				s.logger.Debug().Int("recursion", n).Send()
 				if err := prev(ctx); err != nil {
 					return err
 				}
-				return ch(ctx)
+				return next(ctx)
 			}
 		}
-	} else {
-		next = s.loop
 	}
+	s.next = chain
+}
+
+func (s *BaseService) LoopedStarter(ctx context.Context, clean Chain, chain ...Chain) {
+	s.SetStatus(common.StatusStarted)
+	s.WithLoop(chain...)
 	for {
-		if err := next(ctx); err != nil {
+		if err := s.next(ctx); err != nil {
 			s.logger.Err(err).Send()
 			s.GetErrs() <- err
-			return err
+			if err := s.cleanup(ctx); err != nil {
+				s.GetErrs() <- err
+			}
+			return
 		}
 		s.logger.Print("running")
 		<-s.tick.C
 	}
+}
+
+func (s *BaseService) Chain(ctx context.Context) error {
+	return s.start(ctx)
 }
 
 func (s *BaseService) GetLogger() *zerolog.Logger {
@@ -137,11 +160,12 @@ func (s *BaseService) NewBase(
 	return &BaseService{prov,
 		new(sync.Mutex),
 		s.key,
+		watcher,
 		watcher.Subscription(),
 		common.NoStatus,
 		health,
 		service,
-		nil, nil,
+		nil, nil, nil,
 		time.NewTicker(tick),
 		ishealth,
 		nil,
@@ -154,13 +178,18 @@ func (s *BaseService) BuildLogger(
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sub := logging.WithSub(root, s.Name(), func(ctx zerolog.Context) zerolog.Context {
-		ctx = ctx.Bool("health", s.ishealth)
+		cfg := s.prov.GetConfig()
 		if s.ishealth {
 			ctx = ctx.Str("address", s.health)
 		} else {
 			ctx = ctx.Str("address", s.service)
 		}
-		return ctx
+		return ctx.
+			Str("protocol",
+				cfg.Members.Protocol,
+			).Bool("health",
+			s.ishealth,
+		)
 	})
 	s.logger = sub
 }
@@ -170,15 +199,15 @@ func (s *BaseService) WithChainer(
 ) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.chain = func(ctx context.Context) error {
+	s.start = func(ctx context.Context) error {
 		for _, sv := range svc {
 			go sv.Start(ctx)
 		}
 		return nil
 	}
-	s.cleanup = func() error {
+	s.cleanup = func(ctx context.Context) error {
 		for _, sv := range svc {
-			if err := sv.Stop(); err != nil {
+			if err := sv.Stop(ctx); err != nil {
 				s.errs <- err
 				return err
 			}
@@ -188,12 +217,8 @@ func (s *BaseService) WithChainer(
 }
 
 func (s *BaseService) Close(ctx context.Context) error {
-	s.SetStatus(common.StatusClosed)
-	return s.cleanup()
-}
-
-func (s *BaseService) Chain(ctx context.Context) error {
-	return s.chain(ctx)
+	defer s.SetStatus(common.StatusClosed)
+	return s.cleanup(ctx)
 }
 
 func (s *BaseService) WithKey(key common.Service) {

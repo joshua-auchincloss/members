@@ -76,15 +76,14 @@ func (s *SvcFramework) Start(
 						log.Printf("starting service %s [shard %d]", service_keys[k], i+1)
 						log.Printf("service %s (pid: %d)", service_keys[k], os.Getpid())
 						service.Chain(ctx)
-						go service.Start(ctx)
-						return nil
+						return service.Start(ctx)
 					},
 					OnStop: func(ctx context.Context) error {
 						err := service.GetBase().Close(ctx)
 						if err != nil {
 							log.Printf("error closing children: %s", err)
 						}
-						return service.Stop()
+						return service.Stop(ctx)
 					},
 				})
 			}

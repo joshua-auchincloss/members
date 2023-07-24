@@ -13,6 +13,7 @@
 
 # file based storage
 file.store
+test_certs
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
