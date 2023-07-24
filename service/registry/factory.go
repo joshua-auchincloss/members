@@ -15,6 +15,8 @@ type (
 )
 
 var (
+	// Module = service.GrpcModule[registryService, registry.UnimplementedRegistryHandler](common.ServiceRegistry, registryconnect.NewRegistryHandler)
+
 	Module = fx.Module(
 		"registry-service",
 		fx.Provide(

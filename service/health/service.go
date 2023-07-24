@@ -52,6 +52,9 @@ func (h *healthService) loop(ctx context.Context) error {
 	} else {
 		h.GetLogger().Info().Msgf("upserted: %+v", memb)
 	}
+	if err := h.store.CleanOldMembers(ctx, time.Minute); err != nil {
+		return err
+	}
 	if memb, err := h.store.GetMembers(ctx); err != nil {
 		h.GetLogger().Print(err)
 		return err

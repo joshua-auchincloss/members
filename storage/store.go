@@ -5,6 +5,7 @@ import (
 	"members/common"
 	"members/config"
 	wctx "members/context"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -18,6 +19,7 @@ type (
 		GetHandler(key string) (*common.RegisteredProto, error)
 		UpsertMembership(ctx context.Context, meta *common.Membership) error
 		GetMembers(ctx context.Context, kind ...common.Service) ([]*common.Membership, error)
+		CleanOldMembers(ctx context.Context, from time.Duration) error
 		CreateProject(ctx context.Context, project *common.ProtoProject, proto *common.ProtoMeta) error
 		RegisterProto(ctx context.Context, proto *common.ProtoMeta, data *common.RegisteredProto) error
 	}

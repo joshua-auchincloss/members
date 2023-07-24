@@ -29,6 +29,7 @@ tasks:
 
   proto:
     cmds:
+      - rm -rf ./grpc
       - buf generate
 
   mysql:
@@ -81,6 +82,13 @@ tasks:
     cmds:
       - $run cluster health
        --address 127.0.0.1:4004  --tls true
+
+  list:
+    dotenv:
+      - env/tls.env
+    cmds:
+      - $run cluster describe
+       --address 127.0.0.1:9010  --tls true
 
   postgres-cluster:
     dotenv:

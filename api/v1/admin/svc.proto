@@ -1,0 +1,10 @@
+syntax = "proto3";
+package members.v1.registry.svc;
+import "api/v1/registry/pkg/def.proto";
+import "api/v1/common/def.proto";
+
+
+service Admin {
+    rpc Empty(members.v1.common.Empty) returns (members.v1.common.Empty);
+    rpc DescribeCluster(members.v1.common.Empty) returns (stream members.v1.common.Member);
+}

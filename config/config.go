@@ -55,6 +55,7 @@ type (
 		Join     []string  `mapstructure:"join" env:"JOIN,overwrite"`
 		Member   uint32    `mapstructure:"member" env:"MEMBER,overwrite"`
 		Registry *PortJoin `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin    *PortJoin `mapstructure:"admin" env:",prefix=ADMIN_"`
 	}
 
 	Config struct {
@@ -68,6 +69,8 @@ type (
 
 func (t *TlsConfig) GetService(key common.Service) *Tls {
 	switch key {
+	case common.ServiceAdmin:
+		return t.Health
 	case common.ServiceRegistry:
 		return t.Registry
 	case common.ServiceHealth:
@@ -109,6 +112,8 @@ func (t *Tls) Build() (*tls.Config, error) {
 
 func (m *Members) GetService(key common.Service) *PortJoin {
 	switch key {
+	case common.ServiceAdmin:
+		return m.Admin
 	case common.ServiceRegistry:
 		return m.Registry
 	default:

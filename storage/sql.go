@@ -63,6 +63,16 @@ func drop[T interface{}](sq *Sql, model T) {
 	}
 }
 
+func (sq *Sql) CleanOldMembers(ctx context.Context, from time.Duration) error {
+	if _, err := sq.db.NewDelete().
+		Model((*common.Membership)(nil)).
+		Where("last_health < ?", time.Now().Add(-from)).
+		Exec(ctx); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	return nil
+}
+
 func (sq *Sql) WithLogger(sub *zerolog.Logger) {
 	sq.logger = sub
 }

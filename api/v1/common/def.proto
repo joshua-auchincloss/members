@@ -1,16 +1,18 @@
 syntax = "proto3";
 package members.v1.common;
 
-message RegisteredProto {
-    string id            =1;
-    string file_name     =2;
-    bytes  data          =3;
-    string last_update   =4;
+
+enum Service {
+    SERVICE_UNKNOWN=0;
+	SERVICE_HEALTH=1;
+	SERVICE_REGISTRY=2;
+	SERVICE_ADMIN=99;
 }
 
-message ProtoMeta {
-    string id           =1;
-    string project_key  =2;
-    string  version     =3;
-    string registration =4;
+message Empty {}
+message Member {
+    string address=1;
+    Service service =2;
+    string join_time=3;
+    string last_health=4;
 }

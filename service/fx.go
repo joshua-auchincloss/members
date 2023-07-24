@@ -65,7 +65,9 @@ func (s *SvcFramework) Start(
 	prov config.ConfigProvider) {
 	cf := prov.GetConfig()
 	for k, svc := range s.in {
-		if ForService(prov, k) {
+		do := ForService(prov, k)
+		log.Info().Str("svc", common.ServiceKeys.Get(k)).Bool("do", do).Msg("HERE")
+		if do {
 			ports := cf.Members.GetService(k)
 			for i, sv := range ports.Service {
 				sp := prov.HostPort(sv)
@@ -73,8 +75,8 @@ func (s *SvcFramework) Start(
 				service := svc(hp, sp)
 				lc.Append(fx.Hook{
 					OnStart: func(ctx context.Context) error {
-						log.Printf("starting service %s [shard %d]", service_keys[k], i+1)
-						log.Printf("service %s (pid: %d)", service_keys[k], os.Getpid())
+						log.Printf("starting service %s [shard %d]", common.ServiceKeys.Get(k), i+1)
+						log.Printf("service %s (pid: %d)", common.ServiceKeys.Get(k), os.Getpid())
 						service.Chain(ctx)
 						return service.Start(ctx)
 					},
@@ -88,7 +90,6 @@ func (s *SvcFramework) Start(
 				})
 			}
 		}
-
 	}
 }
 
@@ -106,6 +107,7 @@ func Create[T Service](key common.Service) func(
 		store storage.Store,
 		root *zerolog.Logger,
 		watcher errs.Watcher) error {
+		log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
 			fw.health = func(health, rpc string) Service {

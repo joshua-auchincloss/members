@@ -1,6 +1,7 @@
 syntax = "proto3";
 package members.v1.registry.pkg;
 import "api/v1/common/def.proto";
+import "api/v1/common/image.proto";
 
 
 message NewVersionRequest {

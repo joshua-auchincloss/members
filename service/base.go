@@ -82,7 +82,7 @@ func (s *BaseService) GetBase() *BaseService {
 }
 
 func (s *BaseService) Name() string {
-	return service_keys[s.key]
+	return common.ServiceKeys.Get(s.key)
 }
 
 func (s *BaseService) loop(ctx context.Context) error {
