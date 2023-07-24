@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
-	_ "github.com/spf13/viper/remote"
 )
 
 type (
