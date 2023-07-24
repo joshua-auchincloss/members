@@ -35,7 +35,7 @@ type (
 		// chain cleanup events
 		cleanup Chain
 
-		tick *time.Ticker
+		tick time.Duration
 
 		ishealth bool
 
@@ -133,6 +133,7 @@ func (s *BaseService) WithLoop(loop ...Chain) {
 func (s *BaseService) LoopedStarter(ctx context.Context, clean Chain, chain ...Chain) {
 	s.SetStatus(common.StatusStarted)
 	s.WithLoop(chain...)
+	tick := time.NewTicker(s.tick)
 	for {
 		if err := s.next(ctx); err != nil {
 			s.logger.Err(err).Send()
@@ -143,7 +144,7 @@ func (s *BaseService) LoopedStarter(ctx context.Context, clean Chain, chain ...C
 			return
 		}
 		s.logger.Print("running")
-		<-s.tick.C
+		<-tick.C
 	}
 }
 
@@ -175,7 +176,7 @@ func (s *BaseService) NewBase(
 		service,
 		dns,
 		nil, nil, nil,
-		time.NewTicker(tick),
+		tick,
 		ishealth,
 		nil,
 	}

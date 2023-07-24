@@ -49,7 +49,6 @@ func NewClientFactory[T any](key common.Service, impl func(ci grpc.ClientConnInt
 			} else {
 				call = append(call, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			}
-
 			dial, err := server.NewClient(key, prov, root_tls, args)
 			if err != nil {
 				return nil, err
@@ -58,7 +57,8 @@ func NewClientFactory[T any](key common.Service, impl func(ci grpc.ClientConnInt
 				log.Info().Str("address", addr).Msg("dialling...")
 				return dial.Dial(ctx, addr)
 			}))
-			conn, err := server.DialGrpc(context.TODO(), "127.0.0.1:9010", call...)
+
+			conn, err := server.DialGrpc(context.TODO(), key, args.DNS, call...)
 			if err != nil {
 				return nil, err
 			}

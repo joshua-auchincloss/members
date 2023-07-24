@@ -94,18 +94,56 @@ func (vx *default_v[T]) withOverride(ctx *cli.Context) {
 }
 
 var (
+	ConfigYaml = default_v[string]{"config", "CONFIG", stringGetter, ""}
+
 	ServicesDefn = default_v[[]string]{"services", "SERVICES", stringSliceGetter, []string{"all"}}
 
-	MemberDefn  = default_v[uint32]{"members-member", "MEMBER_PORT", uint32Getter, 8091}
-	KnownParent = default_v[string]{"members-known", "KNOWN_HOST", stringGetter, ""}
-	BindIpDefn  = default_v[string]{"members-bind", "BIND_IP", stringGetter, "127.0.0.1"}
+	MemberDefn  = default_v[uint32]{"cluster-member", "MEMBER_PORT", uint32Getter, 8091}
+	KnownParent = default_v[string]{"cluster-known", "KNOWN_HOST", stringGetter, ""}
+	BindIpDefn  = default_v[string]{"cluster-bind", "BIND_IP", stringGetter, "127.0.0.1"}
 
-	RemoteAddrsDefn = default_v[[]string]{"addresses", "ADDRESSES", stringSliceGetter, []string{}}
 	RemoteTlsDefn   = default_v[bool]{"tls", "TLS", boolGetter, true}
 	RemoteDebugDefn = default_v[bool]{"debug", "DEBUG", boolGetter, false}
 
-	RegistrySvcDefn    = default_v[[]uint32]{"members-registry-service", "MEMBERS_REGISTRY_SERVICE", uint32SliceGetter, []uint32{9009}}
-	RegistryHealthDefn = default_v[[]uint32]{"members-registry-health", "MEMBERS_REGISTRY_HEALTH", uint32SliceGetter, []uint32{4200}}
+	RegistrySvcDefn = default_v[[]uint32]{"cluster-registry-server-service",
+		"CLUSTER_REGISTRY_SERVER_SERVICE",
+		uint32SliceGetter,
+		[]uint32{9009},
+	}
+	RegistryHealthDefn = default_v[[]uint32]{"cluster-registry-server-health", "CLUSTER_REGISTRY_SERVER_HEALTH", uint32SliceGetter, []uint32{4200}}
+
+	RegistryCliDnsDefn = default_v[string]{"cluster-registry-client-dns",
+		"CLUSTER_REGISTRY_CLIENT_DNS",
+		stringGetter,
+		"localhost",
+	}
+	RegistryCliAddrDefn = default_v[[]string]{"cluster-registry-client-addresses",
+		"CLUSTER_REGISTRY_CLIENT_ADDRESSES",
+		stringSliceGetter,
+		[]string{},
+	}
+
+	AdminSvcDefn = default_v[[]uint32]{"cluster-admin-server-service",
+		"CLUSTER_ADMIN_SERVER_SERVICE",
+		uint32SliceGetter,
+		[]uint32{9010},
+	}
+	AdminHealthDefn = default_v[[]uint32]{"cluster-admin-server-health",
+		"CLUSTER_ADMIN_SERVER_HEALTH",
+		uint32SliceGetter,
+		[]uint32{4201},
+	}
+
+	AdminCliDnsDefn = default_v[string]{"cluster-admin-client-dns",
+		"CLUSTER_ADMIN_CLIENT_DNS",
+		stringGetter,
+		"localhost",
+	}
+	AdminCliAddrDefn = default_v[[]string]{"cluster-admin-client-addresses",
+		"CLUSTER_ADMIN_CLIENT_ADDRESSES",
+		stringSliceGetter,
+		[]string{},
+	}
 
 	StoreTypeDefn   = default_v[string]{"storage-type", "STORAGE_TYPE", stringGetter, "memory"}
 	StoreUriDefn    = default_v[string]{"storage-uri", "STORAGE_URI", stringGetter, ""}
@@ -125,9 +163,12 @@ var (
 	uint_slc_opts = []default_v[[]uint32]{
 		RegistrySvcDefn,
 		RegistryHealthDefn,
+		AdminHealthDefn,
+		AdminSvcDefn,
 	}
 
 	string_opts = []default_v[string]{
+		ConfigYaml,
 		KnownParent,
 		BindIpDefn,
 		StoreTypeDefn,
@@ -135,6 +176,8 @@ var (
 		StoreUserDefn,
 		StorePwDefn,
 		StoreDbDefn,
+		RegistryCliDnsDefn,
+		AdminCliDnsDefn,
 	}
 
 	bool_opts = []default_v[bool]{
@@ -148,6 +191,8 @@ var (
 
 	slice_opts = []default_v[[]string]{
 		ServicesDefn,
+		AdminCliAddrDefn,
+		RegistryCliAddrDefn,
 	}
 
 	options = []option{
@@ -183,13 +228,18 @@ func ClusterFlags() []cli.Flag {
 func RemoteFlags() []cli.Flag {
 	return Flags(
 		[]default_v[uint32]{},
-		[]default_v[string]{},
+		[]default_v[string]{
+			ConfigYaml,
+			RegistryCliDnsDefn,
+			AdminCliDnsDefn,
+		},
 		[]default_v[bool]{
 			RemoteDebugDefn,
 			RemoteTlsDefn,
 		},
 		[]default_v[[]string]{
-			RemoteAddrsDefn,
+			AdminCliAddrDefn,
+			RegistryCliAddrDefn,
 		},
 		[]default_v[[]uint32]{},
 	)

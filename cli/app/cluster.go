@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"members/common"
 	"members/config"
@@ -11,7 +12,6 @@ import (
 	commonpb "members/grpc/api/v1/common"
 	"members/grpc/api/v1/health"
 	healthpb "members/grpc/api/v1/health/pkg"
-	server "members/http"
 	"members/logging"
 	"members/p2p"
 	"members/service"
@@ -29,8 +29,13 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
+)
+
+var (
+	head = color.New(color.FgMagenta).Add(color.Underline).Add(color.Bold)
 )
 
 func nooplog(ctx *cli.Context, opts ...fx.Option) fx.Option {
@@ -42,22 +47,45 @@ func nooplog(ctx *cli.Context, opts ...fx.Option) fx.Option {
 	return fx.Options(out...)
 }
 
+func resolver_printer(prov config.ConfigProvider) {
+	fmt.Println(head.Sprint("\n\ncluster from dynamic configuration\n"))
+	tbl := utils.Table("DNS", "Service", "Address")
+	for svc, clust := range prov.GetDynamic().PeekAll() {
+		for dns, addrs := range clust.Peek() {
+			for _, addr := range addrs {
+				tbl.AddRow(dns, common.ServiceKeys.Get(svc), addr.Addr)
+			}
+		}
+
+	}
+	tbl.Print()
+}
+
 func remoteInvoker[V any](
 	clientfactory fx.Option,
-	do func(*zerolog.Logger, V) error,
+	do func(config.ConfigProvider, *zerolog.Logger, V) error,
 ) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
+		dial := &common.DialArgs{
+			DNS:       ctx.String(config.AdminCliDnsDefn.Key),
+			Addresses: ctx.StringSlice(config.AdminCliAddrDefn.Key),
+			TLS:       ctx.Bool(config.RemoteTlsDefn.Key),
+		}
 		opts := nooplog(ctx,
-			fx.Supply(ctx, &common.DialArgs{
-				Addresses: ctx.StringSlice("addr"),
-				TLS:       ctx.Bool("tls"),
-			}),
+			fx.Supply(ctx, dial),
 			logging.Fx,
 			logging.Suppress,
+			fx.Invoke(
+				func(da *common.DialArgs) {
+					if ctx.Bool(config.RemoteDebugDefn.Key) {
+						log.Debug().Interface("dial", dial).Send()
+					}
+				},
+			),
 			config.CliCacheCfg,
 			storage_fx.Dependencies,
-			server.Lb,
 			clientfactory,
+			fx.Invoke(resolver_printer),
 			fx.Invoke(
 				func(
 					root *zerolog.Logger,
@@ -69,13 +97,14 @@ func remoteInvoker[V any](
 						return err
 					}
 					c := *cli
-					if err := do(root, c); err != nil {
+					if err := do(prov, root, c); err != nil {
 						return err
 					}
 					return nil
 				},
 			),
-			fx.Invoke(closer))
+			fx.Invoke(closer),
+		)
 		app := fx.New(
 			opts,
 		)
@@ -92,11 +121,14 @@ var (
 				Name:  "health",
 				Flags: config.RemoteFlags(),
 				Action: remoteInvoker[health.HealthClient](
-					health_impl.ClientFactory, func(root *zerolog.Logger, c health.HealthClient) error {
+					health_impl.ClientFactory, func(prov config.ConfigProvider, root *zerolog.Logger, c health.HealthClient) error {
 						resp, err := c.Check(context.TODO(), &healthpb.HealthCheckRequest{
 							Service: "",
 						})
 						root.Debug().Err(err).Interface("resp", resp).Send()
+						if err != nil {
+							return err
+						}
 						st := color.BlueString("status: ")
 						switch {
 						case resp.Status == healthpb.HealthCheckResponse_SERVING:
@@ -116,11 +148,14 @@ var (
 				Name:  "describe",
 				Flags: config.RemoteFlags(),
 				Action: remoteInvoker[admin.AdminClient](
-					admin_impl.ClientFactory, func(root *zerolog.Logger, c admin.AdminClient) error {
+					admin_impl.ClientFactory,
+					func(prov config.ConfigProvider, root *zerolog.Logger, c admin.AdminClient) error {
 						resp, err := c.DescribeCluster(context.TODO(), &commonpb.Empty{})
 						if err != nil {
 							return err
 						}
+
+						fmt.Println(head.Sprint("\n\ncluster response\n"))
 						tbl := utils.Table("DNS", "Service", "Address", "Join Time", "Last Health")
 						for {
 							membr, err := resp.Recv()
@@ -150,7 +185,6 @@ var (
 						errs.Module,
 						config.Module,
 						storage_fx.Dependencies,
-						server.Lb,
 						service.Module,
 						health_impl.Module,
 						admin_impl.Module,

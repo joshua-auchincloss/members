@@ -30,6 +30,7 @@ type (
 		args *common.DialArgs
 		tls  *tls.Config
 		dialer
+		svc common.Service
 	}
 
 	tcpClient struct {
@@ -54,6 +55,7 @@ func NewClient(
 			args,
 			tlscfg,
 			DialUDP,
+			service,
 		}}, nil
 	default:
 		log.Debug().Str("protocol", "tcp").Send()
@@ -61,6 +63,7 @@ func NewClient(
 			args,
 			tlscfg,
 			DialTcp,
+			service,
 		}}, nil
 	}
 }
@@ -91,11 +94,11 @@ func (cli *clientbase) DialFallback(ctx context.Context, addrs ...string) (net.C
 	return nil, errors.New("no hosts available")
 }
 
-func DialGrpc(ctx context.Context, dns string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func DialGrpc(ctx context.Context, svc common.Service, dns string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts = append(opts,
 		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig": [{"round_robin":{}}]}`),
 	)
-	return grpc.Dial(fmt.Sprintf("%s:///%s", lb_scheme, dns),
+	return grpc.Dial(fmt.Sprintf("%s:///%s", common.ServiceKeys.Get(svc), dns),
 		opts...)
 	// return nil, errors.New("no hosts available")
 }

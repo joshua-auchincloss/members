@@ -1,6 +1,7 @@
 package server
 
 import (
+	"members/common"
 	"members/config"
 	"members/storage"
 
@@ -9,15 +10,9 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-var (
-	Lb = fx.Module(
-		"server-loadbalance",
-		fx.Invoke(ensure_lb),
-	)
-)
-
-func ensure_lb(ctx *cli.Context, prov config.ConfigProvider, store storage.Store) error {
-	// addrs := ctx.StringSlice(config.RemoteAddrsDefn.Key)
-	resolver.Register(&resolverBuilder{store, prov})
-	return nil
+func LoadBalancerFor(svc common.Service) fx.Option {
+	return fx.Invoke(func(ctx *cli.Context, prov config.ConfigProvider, store storage.Store) error {
+		resolver.Register(&resolverBuilder{svc, store, prov})
+		return nil
+	})
 }

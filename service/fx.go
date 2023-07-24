@@ -69,9 +69,9 @@ func (s *SvcFramework) Start(
 		log.Info().Str("svc", common.ServiceKeys.Get(k)).Bool("do", do).Msg("HERE")
 		if do {
 			ports := cf.Members.GetService(k)
-			for i, sv := range ports.Service {
+			for i, sv := range ports.Svc.Service {
 				sp := prov.HostPort(sv)
-				hp := prov.HostPort(ports.Health[i])
+				hp := prov.HostPort(ports.Svc.Health[i])
 				service := svc(hp, sp)
 				lc.Append(fx.Hook{
 					OnStart: func(ctx context.Context) error {

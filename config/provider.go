@@ -1,7 +1,6 @@
 package config
 
 import (
-	"members/common"
 	"net"
 	"strconv"
 	"sync"
@@ -41,19 +40,20 @@ func New(ctx *cli.Context) (ConfigProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	dyn, err := getDynamic()
-	if err != nil {
-		return nil, err
-	}
-	dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:9010", "127.0.0.1:9010")
-	dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:8009", "127.0.0.1:8009")
-	return &configProvider{
+	root := &configProvider{
 		lock: new(sync.Mutex),
 		ctx:  ctx,
 		cfg:  cfg,
 		mls:  nil,
-		dyn:  dyn,
-	}, nil
+	}
+	dyn, err := getDynamic(root)
+	if err != nil {
+		return nil, err
+	}
+	root.dyn = dyn
+	// dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:9010", "127.0.0.1:9010")
+	// dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:8009", "127.0.0.1:8009")
+	return root, nil
 }
 
 func ensureFileCache(name string) func(prov ConfigProvider) {

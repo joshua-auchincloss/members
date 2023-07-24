@@ -1,0 +1,20 @@
+cluster:
+  registry:
+    client:
+      # dns: localhost
+      # addresses:
+      #   - 127.0.0.1:9009
+      servers:
+        localhost:
+          - 127.0.0.1:9009
+          - 127.0.0.1:8009
+
+  admin:
+    client:
+      # dns: localhost
+      # addresses:
+      #   - 127.0.0.1:9010
+      servers:
+        localhost:
+          - 127.0.0.1:9010
+          - 127.0.0.1:8010

@@ -92,19 +92,21 @@ tasks:
   health:
     dotenv:
       - env/tls.env
+      - env/client.env
     cmds:
       - $run cluster health
-        --address 127.0.0.1:4004  --tls true
-
-  list:
-    dotenv:
-      - env/tls.env
-    cmds:
-      - $run cluster describe
-        --addresses 127.0.0.1:8010
-        --addresses 127.0.0.1:9010
         --tls
         --debug
+
+  list:
+    env:
+      CONFIG: env/client.yaml
+    dotenv:
+      - env/tls.env
+      - env/client.env
+    cmds:
+      - $run cluster describe
+        --tls
 
   postgres-cluster:
     dotenv:

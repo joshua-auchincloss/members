@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"members/common"
+	"members/utils"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -54,20 +55,32 @@ type (
 		Health     *Tls `env:",prefix=HEALTH_"`
 	}
 
+	ClientArgs struct {
+		Dns       string   `mapstructure:"dns" env:"DNS,overwrite"`
+		Addresses []string `mapstructure:"addresses" env:"ADDRESSES,overwrite"`
+
+		Servers map[string][]string `mapstructure:"servers"`
+	}
+
+	Service struct {
+		Svc    *PortJoin   `mapstructure:"server" env:",prefix=SERVER_"`
+		Client *ClientArgs `mapstructure:"client" env:",prefix=CLIENT_"`
+	}
+
 	Members struct {
 		Protocol string           `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
 		Dns      string           `mapstructure:"dns" env:"DNS,overwrite"`
 		Bind     string           `mapstructure:"bind" env:"BIND,overwrite"`
 		Join     []string         `mapstructure:"join" env:"JOIN,overwrite"`
 		Member   uint32           `mapstructure:"member" env:"MEMBER,overwrite"`
-		Registry *PortJoin        `mapstructure:"registry" env:",prefix=REGISTRY_"`
-		Admin    *PortJoin        `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Registry *Service         `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin    *Service         `mapstructure:"admin" env:",prefix=ADMIN_"`
 		Client   *ClientTlsConfig `env:",prefix=CLIENT_"`
 	}
 
 	Config struct {
 		Services []string               `mapstructure:"services" env:"SERVICES,overwrite"`
-		Members  *Members               `mapstructure:"members" env:",prefix=CLUSTER_"`
+		Members  *Members               `mapstructure:"cluster" env:",prefix=CLUSTER_"`
 		Storage  *Storage               `mapstructure:"storage" env:",prefix=STORAGE_"`
 		Tls      *TlsConfig             `mapstructure:"tls" env:",prefix=TLS_"`
 		List     *memberlist.Memberlist `mapstructure:"-"`
@@ -82,6 +95,16 @@ func (t *TlsConfig) GetService(key common.Service) *Tls {
 		return t.Registry
 	case common.ServiceHealth:
 		return t.Health
+	}
+	return nil
+}
+
+func (m *Members) GetClient(key common.Service) *ClientArgs {
+	switch key {
+	case common.ServiceAdmin:
+		return m.Admin.Client
+	case common.ServiceRegistry:
+		return m.Registry.Client
 	}
 	return nil
 }
@@ -117,7 +140,7 @@ func (t *Tls) Build() (*tls.Config, error) {
 	}, nil
 }
 
-func (m *Members) GetService(key common.Service) *PortJoin {
+func (m *Members) GetService(key common.Service) *Service {
 	switch key {
 	case common.ServiceAdmin:
 		return m.Admin
@@ -139,6 +162,17 @@ func getConfig(ctx *cli.Context) (*Config, error) {
 		opt.applyViper(v)
 	}
 	viper.AutomaticEnv()
+
+	filecfg := ctx.String(ConfigYaml.Key)
+	if !utils.ZeroStr(filecfg) {
+		v.SetConfigName(filecfg)
+		v.SetConfigType("yaml")
+		v.AddConfigPath(".")
+		if err := v.ReadInConfig(); err != nil {
+			return nil, err
+		}
+	}
+
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
