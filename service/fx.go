@@ -108,12 +108,14 @@ func Create[T Service](key common.Service) func(
 		root *zerolog.Logger,
 		watcher errs.Watcher) error {
 		log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")
+		cfg := prov.GetConfig()
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
 			fw.health = func(health, rpc string) Service {
 				h := factory.CreateService(prov, store)
 				h.WithBase(*h.NewBase(prov,
 					watcher,
+					cfg.Members.Dns,
 					health,
 					rpc,
 					time.Second*10,
@@ -127,6 +129,7 @@ func Create[T Service](key common.Service) func(
 			svc := factory.CreateService(prov, store)
 			svc.WithBase(*svc.NewBase(prov,
 				watcher,
+				cfg.Members.Dns,
 				health,
 				rpc,
 				poll_freq,

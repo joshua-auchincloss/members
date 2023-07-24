@@ -1,6 +1,7 @@
 package config
 
 import (
+	"members/common"
 	"net"
 	"strconv"
 	"sync"
@@ -18,6 +19,7 @@ type (
 		GetList() *memberlist.Memberlist
 		HostPort(port uint32) string
 		EnsureFileCache(fn string)
+		GetDynamic() *DynamicConfig
 	}
 
 	configProvider struct {
@@ -26,6 +28,7 @@ type (
 		ctx *cli.Context
 		cfg *Config
 		mls *memberlist.Config
+		dyn *DynamicConfig
 	}
 )
 
@@ -38,11 +41,18 @@ func New(ctx *cli.Context) (ConfigProvider, error) {
 	if err != nil {
 		return nil, err
 	}
+	dyn, err := getDynamic()
+	if err != nil {
+		return nil, err
+	}
+	dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:9010", "127.0.0.1:9010")
+	dyn.AddCluster(common.ServiceAdmin, "127.0.0.1:8009", "127.0.0.1:8009")
 	return &configProvider{
 		lock: new(sync.Mutex),
 		ctx:  ctx,
 		cfg:  cfg,
 		mls:  nil,
+		dyn:  dyn,
 	}, nil
 }
 
@@ -63,6 +73,10 @@ func (prov *configProvider) EnsureFileCache(fn string) {
 
 func (prov *configProvider) GetConfig() *Config {
 	return prov.cfg
+}
+
+func (prov *configProvider) GetDynamic() *DynamicConfig {
+	return prov.dyn
 }
 
 func (prov *configProvider) ToMembership() *memberlist.Config {

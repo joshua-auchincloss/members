@@ -12,8 +12,8 @@ import (
 
 type (
 	Membership struct {
-		bun.BaseModel `bun:"members"`
-
+		bun.BaseModel  `bun:"members"`
+		Dns            string    `bun:"dns"`
 		PublicAddress  string    `bun:"address"`
 		Service        Service   `bun:"service"`
 		JoinTime       time.Time `bun:"time,default:current_timestamp"`

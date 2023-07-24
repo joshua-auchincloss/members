@@ -12,7 +12,8 @@ enum Service {
 message Empty {}
 message Member {
     string address=1;
-    Service service =2;
-    string join_time=3;
-    string last_health=4;
+    string dns=2;
+    Service service =3;
+    string join_time=4;
+    string last_health=5;
 }

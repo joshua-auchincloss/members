@@ -21,13 +21,14 @@ type (
 		)
 		GetHealth() string
 		GetService() string
+		GetDns() string
 		WithKey(key common.Service)
 		GetBase() *BaseService
 		WithBase(base BaseService)
 		NewBase(
 			cfg config.ConfigProvider,
 			watcher errs.Watcher,
-			health, service string,
+			dns, health, service string,
 			tick time.Duration,
 			ishealth bool,
 		) *BaseService

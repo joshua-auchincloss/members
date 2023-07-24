@@ -11,6 +11,7 @@ import (
 	commonpb "members/grpc/api/v1/common"
 	"members/grpc/api/v1/health"
 	healthpb "members/grpc/api/v1/health/pkg"
+	server "members/http"
 	"members/logging"
 	"members/p2p"
 	"members/service"
@@ -19,6 +20,7 @@ import (
 	"members/service/registry"
 	"members/service/starter"
 	storage_fx "members/storage/fx"
+	"members/utils"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,33 +33,30 @@ import (
 	"go.uber.org/fx"
 )
 
-var (
-	remoteFlags = []cli.Flag{
-		&cli.StringFlag{
-			Name:    "addr",
-			Aliases: []string{"address", "a"},
-			Value:   "localhost:9009",
-		},
-		&cli.BoolFlag{
-			Name:    "tls",
-			Aliases: []string{"enable-tls", "t"},
-		},
+func nooplog(ctx *cli.Context, opts ...fx.Option) fx.Option {
+	out := []fx.Option{}
+	if !ctx.Bool("debug") {
+		opts = append(opts, fx.NopLogger)
 	}
-)
+	out = append(out, opts...)
+	return fx.Options(out...)
+}
 
 func remoteInvoker[V any](
 	clientfactory fx.Option,
 	do func(*zerolog.Logger, V) error,
 ) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
-		app := fx.New(
+		opts := nooplog(ctx,
 			fx.Supply(ctx, &common.DialArgs{
-				Address: ctx.String("addr"),
-				TLS:     ctx.Bool("tls"),
+				Addresses: ctx.StringSlice("addr"),
+				TLS:       ctx.Bool("tls"),
 			}),
-			logging.Module,
+			logging.Fx,
+			logging.Suppress,
 			config.CliCacheCfg,
 			storage_fx.Dependencies,
+			server.Lb,
 			clientfactory,
 			fx.Invoke(
 				func(
@@ -76,7 +75,9 @@ func remoteInvoker[V any](
 					return nil
 				},
 			),
-			fx.Invoke(closer),
+			fx.Invoke(closer))
+		app := fx.New(
+			opts,
 		)
 		app.Run()
 		return nil
@@ -89,7 +90,7 @@ var (
 		Subcommands: []*cli.Command{
 			{
 				Name:  "health",
-				Flags: remoteFlags,
+				Flags: config.RemoteFlags(),
 				Action: remoteInvoker[health.HealthClient](
 					health_impl.ClientFactory, func(root *zerolog.Logger, c health.HealthClient) error {
 						resp, err := c.Check(context.TODO(), &healthpb.HealthCheckRequest{
@@ -113,13 +114,14 @@ var (
 			},
 			{
 				Name:  "describe",
-				Flags: remoteFlags,
+				Flags: config.RemoteFlags(),
 				Action: remoteInvoker[admin.AdminClient](
 					admin_impl.ClientFactory, func(root *zerolog.Logger, c admin.AdminClient) error {
 						resp, err := c.DescribeCluster(context.TODO(), &commonpb.Empty{})
 						if err != nil {
 							return err
 						}
+						tbl := utils.Table("DNS", "Service", "Address", "Join Time", "Last Health")
 						for {
 							membr, err := resp.Recv()
 							eof := errors.Is(err, io.EOF)
@@ -128,15 +130,17 @@ var (
 							} else if eof {
 								break
 							}
+							tbl.AddRow(membr.Dns, common.ServiceKeys.Get(membr.Service), membr.Address, membr.JoinTime, membr.LastHealth)
 							root.Debug().Err(err).Interface("member", membr).Send()
 						}
+						tbl.Print()
 						return nil
 					},
 				),
 			},
 			{
 				Name:  "start",
-				Flags: config.Flags(),
+				Flags: config.ClusterFlags(),
 				Action: func(orig *cli.Context) error {
 					sigs := make(chan os.Signal, 1)
 					signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -146,6 +150,7 @@ var (
 						errs.Module,
 						config.Module,
 						storage_fx.Dependencies,
+						server.Lb,
 						service.Module,
 						health_impl.Module,
 						admin_impl.Module,

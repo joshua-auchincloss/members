@@ -86,6 +86,10 @@ func (sq *Sql) Template(str string, vs ...any) string {
 }
 
 func (sq *Sql) UpsertMembership(ctx context.Context, meta *common.Membership) error {
+	if meta.Dns == "" {
+		meta.Dns = meta.PublicAddress
+	}
+
 	base := sq.db.NewInsert().
 		Model(meta)
 	if _, err := base.

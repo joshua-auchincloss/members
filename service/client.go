@@ -9,6 +9,7 @@ import (
 	server "members/http"
 	"net"
 
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,9 +55,10 @@ func NewClientFactory[T any](key common.Service, impl func(ci grpc.ClientConnInt
 				return nil, err
 			}
 			call = append(call, grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+				log.Info().Str("address", addr).Msg("dialling...")
 				return dial.Dial(ctx, addr)
 			}))
-			conn, err := grpc.Dial(args.Address, call...)
+			conn, err := server.DialGrpc(context.TODO(), "127.0.0.1:9010", call...)
 			if err != nil {
 				return nil, err
 			}

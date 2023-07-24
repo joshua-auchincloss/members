@@ -40,6 +40,7 @@ func (h *healthService) loop(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, default_polling/2)
 	defer cancel()
 	memb := &common.Membership{
+		Dns:            h.GetDns(),
 		Service:        h.GetKey(),
 		PublicAddress:  h.GetService(),
 		JoinTime:       time.Now(),
@@ -50,15 +51,16 @@ func (h *healthService) loop(ctx context.Context) error {
 		h.GetLogger().Error().Err(err).Msg("could not upsert membership")
 		return err
 	} else {
-		h.GetLogger().Info().Msgf("upserted: %+v", memb)
+		h.GetLogger().Info().Interface("member", memb).Msg("upserted")
 	}
-	if err := h.store.CleanOldMembers(ctx, time.Minute); err != nil {
+	if err := h.store.CleanOldMembers(ctx, time.Second*20); err != nil {
 		return err
 	}
 	if memb, err := h.store.GetMembers(ctx); err != nil {
 		h.GetLogger().Print(err)
 		return err
 	} else {
+		h.GetProv().GetDynamic().Sync(memb)
 		for _, mem := range memb {
 			h.GetLogger().Printf(
 				"%+v", *mem,
@@ -77,9 +79,7 @@ func (h *healthService) Start(ctx context.Context) error {
 	go h.LoopedStarter(
 		ctx,
 		clean,
-		func(ctx context.Context) error {
-			return h.loop(ctx)
-		},
+		h.loop,
 	)
 	return nil
 }

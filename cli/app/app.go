@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/rs/zerolog/log"
-
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -18,7 +16,6 @@ func closer() {
 }
 
 func BuildApp() *cli.App {
-	log.Print("ok")
 	app := cli.NewApp()
 	app.Name = "mm"
 	app.Usage = ""

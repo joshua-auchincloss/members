@@ -15,7 +15,7 @@ var (
 		Subcommands: []*cli.Command{
 			{
 				Name:  "schema",
-				Flags: config.Flags(),
+				Flags: config.ClusterFlags(),
 				Action: func(orig *cli.Context) error {
 					app := fx.New(
 						fx.Supply(orig),

@@ -100,6 +100,10 @@ var (
 	KnownParent = default_v[string]{"members-known", "KNOWN_HOST", stringGetter, ""}
 	BindIpDefn  = default_v[string]{"members-bind", "BIND_IP", stringGetter, "127.0.0.1"}
 
+	RemoteAddrsDefn = default_v[[]string]{"addresses", "ADDRESSES", stringSliceGetter, []string{}}
+	RemoteTlsDefn   = default_v[bool]{"tls", "TLS", boolGetter, true}
+	RemoteDebugDefn = default_v[bool]{"debug", "DEBUG", boolGetter, false}
+
 	RegistrySvcDefn    = default_v[[]uint32]{"members-registry-service", "MEMBERS_REGISTRY_SERVICE", uint32SliceGetter, []uint32{9009}}
 	RegistryHealthDefn = default_v[[]uint32]{"members-registry-health", "MEMBERS_REGISTRY_HEALTH", uint32SliceGetter, []uint32{4200}}
 
@@ -138,6 +142,8 @@ var (
 		StoreDropDefn,
 		StoreCreateDefn,
 		StoreDebugDefn,
+		RemoteDebugDefn,
+		RemoteTlsDefn,
 	}
 
 	slice_opts = []default_v[[]string]{
@@ -164,7 +170,37 @@ var (
 	}
 )
 
-func Flags() []cli.Flag {
+func ClusterFlags() []cli.Flag {
+	return Flags(
+		uint_opts,
+		string_opts,
+		bool_opts,
+		slice_opts,
+		uint_slc_opts,
+	)
+}
+
+func RemoteFlags() []cli.Flag {
+	return Flags(
+		[]default_v[uint32]{},
+		[]default_v[string]{},
+		[]default_v[bool]{
+			RemoteDebugDefn,
+			RemoteTlsDefn,
+		},
+		[]default_v[[]string]{
+			RemoteAddrsDefn,
+		},
+		[]default_v[[]uint32]{},
+	)
+}
+func Flags(
+	uint_opts []default_v[uint32],
+	string_opts []default_v[string],
+	bool_opts []default_v[bool],
+	slice_opts []default_v[[]string],
+	uint_slc_opts []default_v[[]uint32],
+) []cli.Flag {
 	flags := []cli.Flag{}
 	for _, def := range uint_opts {
 		flags = append(flags, &cli.Uint64Flag{

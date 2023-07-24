@@ -42,6 +42,11 @@ type (
 		Ca         []string `mapstructure:"ca" env:"CA,overwrite"`
 	}
 
+	ClientTlsConfig struct {
+		Trusted map[string][]string `mapstructure:"trusted"`
+		Ca      []string            `mapstructure:"ca" env:"CA,overwrite"`
+	}
+
 	TlsConfig struct {
 		Enabled    bool `env:"ENABLED"`
 		Validation bool `env:"VALIDATION"`
@@ -50,12 +55,14 @@ type (
 	}
 
 	Members struct {
-		Protocol string    `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
-		Bind     string    `mapstructure:"bind" env:"BIND,overwrite"`
-		Join     []string  `mapstructure:"join" env:"JOIN,overwrite"`
-		Member   uint32    `mapstructure:"member" env:"MEMBER,overwrite"`
-		Registry *PortJoin `mapstructure:"registry" env:",prefix=REGISTRY_"`
-		Admin    *PortJoin `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Protocol string           `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
+		Dns      string           `mapstructure:"dns" env:"DNS,overwrite"`
+		Bind     string           `mapstructure:"bind" env:"BIND,overwrite"`
+		Join     []string         `mapstructure:"join" env:"JOIN,overwrite"`
+		Member   uint32           `mapstructure:"member" env:"MEMBER,overwrite"`
+		Registry *PortJoin        `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin    *PortJoin        `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Client   *ClientTlsConfig `env:",prefix=CLIENT_"`
 	}
 
 	Config struct {
@@ -125,6 +132,7 @@ func getConfig(ctx *cli.Context) (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("-"),
 	)
+
 	log.Print("storage kind: ", os.Getenv("STORAGE_KIND"))
 	for _, opt := range options {
 		opt.withOverride(ctx)

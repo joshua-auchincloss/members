@@ -52,6 +52,7 @@ func (h *adminService) DescribeCluster(ctx context.Context, req *connect.Request
 	log.Info().Interface("scanned", memb).Send()
 	for _, clust := range memb {
 		mb := &common.Member{
+			Dns:        clust.Dns,
 			Service:    clust.Service,
 			Address:    clust.PublicAddress,
 			JoinTime:   clust.JoinTime.Format(time.RFC3339Nano),

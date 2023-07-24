@@ -2,6 +2,20 @@ version: "3"
 env:
   run: go run ./cli
 tasks:
+  kv:
+    cmds:
+      - docker run -d
+        -v /usr/share/ca-certificates/:/Users/joshuaauchincloss/Movies/members/test_certs
+        -p 4001:4001 -p 2380:2380 -p 2379:2379
+        --name etcd quay.io/coreos/etcd:v2.3.8
+        -name etcd0
+        -advertise-client-urls http://localhost:2379,http://localhost:4001
+        -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001
+        -initial-advertise-peer-urls http://localhost:2380
+        -listen-peer-urls http://0.0.0.0:2380
+        -initial-cluster-token etcd-cluster-1
+        -initial-cluster etcd0=http://localhost:2380
+        -initial-cluster-state new
   ca:
     dir: test_certs
     cmds:
@@ -54,9 +68,8 @@ tasks:
   postgres-schema:
     dotenv:
       - env/postgres.env
-
     cmds:
-      - $run schema
+      - $run database schema
 
   mysql-schema:
     dotenv:
@@ -81,14 +94,17 @@ tasks:
       - env/tls.env
     cmds:
       - $run cluster health
-       --address 127.0.0.1:4004  --tls true
+        --address 127.0.0.1:4004  --tls true
 
   list:
     dotenv:
       - env/tls.env
     cmds:
       - $run cluster describe
-       --address 127.0.0.1:9010  --tls true
+        --addresses 127.0.0.1:8010
+        --addresses 127.0.0.1:9010
+        --tls
+        --debug
 
   postgres-cluster:
     dotenv:
@@ -104,7 +120,6 @@ tasks:
     cmds:
       - task cluster
 
-
   mysql-cluster:
     dotenv:
       - env/mysql.env
@@ -112,9 +127,7 @@ tasks:
     cmds:
       - task cluster
 
-
   tidy:
-
     cmds:
       - go mod tidy
 

@@ -7,6 +7,7 @@ import (
 	"members/config"
 	errs "members/errors"
 	"members/logging"
+	"members/utils"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ type (
 		status  common.Status
 		health  string
 		service string
+		dns     string
 
 		// chain startup
 		start Chain
@@ -69,6 +71,9 @@ func (s *BaseService) GetHealth() string {
 }
 func (s *BaseService) GetService() string {
 	return s.service
+}
+func (s *BaseService) GetDns() string {
+	return s.dns
 }
 func (s *BaseService) GetErrs() chan error {
 	return s.errs
@@ -153,10 +158,13 @@ func (s *BaseService) GetLogger() *zerolog.Logger {
 func (s *BaseService) NewBase(
 	prov config.ConfigProvider,
 	watcher errs.Watcher,
-	health, service string,
+	dns, health, service string,
 	tick time.Duration,
 	ishealth bool,
 ) *BaseService {
+	if utils.ZeroStr(dns) {
+		dns = service
+	}
 	return &BaseService{prov,
 		new(sync.Mutex),
 		s.key,
@@ -165,6 +173,7 @@ func (s *BaseService) NewBase(
 		common.NoStatus,
 		health,
 		service,
+		dns,
 		nil, nil, nil,
 		time.NewTicker(tick),
 		ishealth,
