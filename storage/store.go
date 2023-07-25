@@ -4,7 +4,6 @@ import (
 	"context"
 	"members/common"
 	"members/config"
-	wctx "members/context"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -31,12 +30,12 @@ func Setup(config config.ConfigProvider, store Store) error {
 	return store.Setup(config)
 }
 
-func WithStore(store Store) wctx.Context {
-	return context.WithValue(wctx.New(), wctx.ContextKeyWithStore, store)
+func WithStore(ctx context.Context, store Store) context.Context {
+	return context.WithValue(ctx, common.ContextKeys(common.ContextKeyWithStore), store)
 }
 
-func GetStore(ctx wctx.Context) Store {
-	return ctx.Value(wctx.ContextKeyWithStore).(Store)
+func GetStore(ctx context.Context) Store {
+	return ctx.Value(common.ContextKeyWithStore).(Store)
 }
 
 const (
