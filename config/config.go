@@ -68,14 +68,15 @@ type (
 	}
 
 	Members struct {
-		Protocol string           `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
-		Dns      string           `mapstructure:"dns" env:"DNS,overwrite"`
-		Bind     string           `mapstructure:"bind" env:"BIND,overwrite"`
-		Join     []string         `mapstructure:"join" env:"JOIN,overwrite"`
-		Member   uint32           `mapstructure:"member" env:"MEMBER,overwrite"`
-		Registry *Service         `mapstructure:"registry" env:",prefix=REGISTRY_"`
-		Admin    *Service         `mapstructure:"admin" env:",prefix=ADMIN_"`
-		Client   *ClientTlsConfig `env:",prefix=CLIENT_"`
+		Protocol              string           `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
+		Dns                   string           `mapstructure:"dns" env:"DNS,overwrite"`
+		Bind                  string           `mapstructure:"bind" env:"BIND,overwrite"`
+		Join                  []string         `mapstructure:"join" env:"JOIN,overwrite"`
+		Member                uint32           `mapstructure:"member" env:"MEMBER,overwrite"`
+		ConnectionsPerService uint32           `mapstructure:"connections" env:"CONNECTIONS,overwrite"`
+		Registry              *Service         `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin                 *Service         `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Client                *ClientTlsConfig `env:",prefix=CLIENT_"`
 	}
 
 	Config struct {

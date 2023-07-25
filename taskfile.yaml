@@ -1,6 +1,8 @@
 version: "3"
 env:
   run: go run ./cli
+  flags: --tls
+  # --debug
 tasks:
   kv:
     cmds:
@@ -95,8 +97,7 @@ tasks:
       - env/client.env
     cmds:
       - $run cluster health
-        --tls
-        --debug
+        $flags
 
   list:
     env:
@@ -106,7 +107,7 @@ tasks:
       - env/client.env
     cmds:
       - $run cluster describe
-        --tls
+        $flags
 
   postgres-cluster:
     dotenv:

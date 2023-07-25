@@ -98,9 +98,10 @@ var (
 
 	ServicesDefn = default_v[[]string]{"services", "SERVICES", stringSliceGetter, []string{"all"}}
 
-	MemberDefn  = default_v[uint32]{"cluster-member", "MEMBER_PORT", uint32Getter, 8091}
-	KnownParent = default_v[string]{"cluster-known", "KNOWN_HOST", stringGetter, ""}
-	BindIpDefn  = default_v[string]{"cluster-bind", "BIND_IP", stringGetter, "127.0.0.1"}
+	MemberDefn            = default_v[uint32]{"cluster-member", "CLUSTER_MEMBER", uint32Getter, 8091}
+	MemperConnsPerService = default_v[uint32]{"cluster-connections", "CLUSTER_CONNECTIONS", uint32Getter, uint32(0)}
+	KnownParent           = default_v[string]{"cluster-known", "KNOWN_HOST", stringGetter, ""}
+	BindIpDefn            = default_v[string]{"cluster-bind", "BIND_IP", stringGetter, "127.0.0.1"}
 
 	RemoteTlsDefn   = default_v[bool]{"tls", "TLS", boolGetter, true}
 	RemoteDebugDefn = default_v[bool]{"debug", "DEBUG", boolGetter, false}
@@ -159,6 +160,7 @@ var (
 	uint_opts = []default_v[uint32]{
 		MemberDefn,
 		StorePortDefn,
+		MemperConnsPerService,
 	}
 	uint_slc_opts = []default_v[[]uint32]{
 		RegistrySvcDefn,
@@ -227,7 +229,9 @@ func ClusterFlags() []cli.Flag {
 
 func RemoteFlags() []cli.Flag {
 	return Flags(
-		[]default_v[uint32]{},
+		[]default_v[uint32]{
+			MemperConnsPerService,
+		},
 		[]default_v[string]{
 			ConfigYaml,
 			RegistryCliDnsDefn,

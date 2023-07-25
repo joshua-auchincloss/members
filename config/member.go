@@ -3,7 +3,9 @@ package config
 import (
 	"members/common"
 	"members/utils"
+	"net"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -12,8 +14,9 @@ type (
 	ClusterMember struct {
 		mu *sync.Mutex
 
-		Role common.Service
-		Addr string
+		Role  common.Service
+		Proto string
+		Addr  string
 
 		checked bool
 		visible bool
@@ -30,10 +33,83 @@ type (
 	}
 )
 
+func WalkDnsList(l *DnsList,
+	do func(addr *ClusterMember) error,
+	cap int,
+	dns ...string) error {
+	var d string
+	if len(dns) != 0 {
+		d = dns[0]
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	check := !utils.ZeroStr(d)
+	max := cap != -1 && cap > 1
+	var seen int
+	for dns, addrs := range l.members {
+		var this bool
+		if check {
+			this = dns == d
+		} else {
+			this = true
+		}
+		if this {
+			for _, addr := range addrs {
+				if max {
+					seen += 1
+					if seen == cap {
+						log.Warn().Int("cap", cap).Msg("cap reached")
+						return nil
+					}
+					log.Debug().Int("seen", seen).Int("cap", cap).Send()
+				}
+				if err := do(addr); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (m *ClusterMember) Available() bool {
+	m.mu.Lock()
+	return m.visible
+}
+
 func (d *DnsList) Peek() map[string][]*ClusterMember {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.members
+}
+
+func (d *DnsList) AvailabilityWalk(wg *sync.WaitGroup, depth int) {
+	defer wg.Done()
+	if err := WalkDnsList(
+		d,
+		func(addr *ClusterMember) error {
+			if !addr.checked {
+				addr.mu.Lock()
+				defer addr.mu.Unlock()
+				log.Info().Str("proto", "tcp").Str("address", addr.Addr).Send()
+				if conn, err := net.DialTimeout("tcp", addr.Addr, time.Millisecond*1); err != nil {
+					switch err {
+					case net.ErrClosed:
+					default:
+					}
+					addr.visible = false
+				} else {
+					addr.visible = true
+					defer conn.Close()
+				}
+				addr.checked = true
+			}
+			return nil
+		},
+		depth,
+	); err != nil {
+		log.Error().Err(err).Send()
+	}
 }
 
 func new_dns(dns string, members ...*ClusterMember) *DnsList {
@@ -72,14 +148,13 @@ func filter_list_for[T any](m *DnsList,
 	get func(addr *ClusterMember) T,
 	dns ...string,
 ) map[string][]T {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	var d string
 	if len(dns) != 0 {
 		d = dns[0]
 	}
 	check := !utils.ZeroStr(d)
 	known := map[string][]T{}
+
 	for dns, addrs := range m.members {
 		var this bool
 		if check {
@@ -130,7 +205,7 @@ func (m *DnsList) merge_with(svc common.Service, dns string, other []*ClusterMem
 	}
 	m.members[dns] = resolved
 }
-func (m *DnsList) add_to_cluster(svc common.Service, dns, addr string) {
+func (m *DnsList) add_to_cluster(svc common.Service, dns, proto, addr string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	c, ok := m.members[dns]
@@ -143,6 +218,7 @@ func (m *DnsList) add_to_cluster(svc common.Service, dns, addr string) {
 		c = append(c, &ClusterMember{
 			new(sync.Mutex),
 			svc,
+			proto,
 			addr,
 			false,
 			false,

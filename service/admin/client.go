@@ -9,6 +9,10 @@ import (
 	"go.uber.org/fx"
 )
 
+type (
+	AdminClient = *service.ClientFactory[admin.AdminClient]
+)
+
 var (
 	client_factory = service.NewClientFactory(common.ServiceAdmin, admin.NewAdminClient)
 

@@ -48,12 +48,13 @@ func nooplog(ctx *cli.Context, opts ...fx.Option) fx.Option {
 }
 
 func resolver_printer(prov config.ConfigProvider) {
-	fmt.Println(head.Sprint("\n\ncluster from dynamic configuration\n"))
-	tbl := utils.Table("DNS", "Service", "Address")
+
+	fmt.Println(head.Sprint("\n\ncluster from dynamic configuration (from this machine)\n"))
+	tbl := utils.Table("DNS", "Service", "Address", "Available")
 	for svc, clust := range prov.GetDynamic().PeekAll() {
 		for dns, addrs := range clust.Peek() {
 			for _, addr := range addrs {
-				tbl.AddRow(dns, common.ServiceKeys.Get(svc), addr.Addr)
+				tbl.AddRow(dns, common.ServiceKeys.Get(svc), addr.Addr, addr.Available())
 			}
 		}
 
