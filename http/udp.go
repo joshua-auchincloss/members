@@ -22,7 +22,7 @@ var (
 
 func NewUDP(
 	watcher errs.Watcher,
-	cfg *config.Tls,
+	cfg *config.ServerTls,
 	root *config.TlsConfig,
 	t *tls.Config,
 	conf *quic.Config,

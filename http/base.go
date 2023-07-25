@@ -12,7 +12,7 @@ type (
 		err  chan error
 		srv  invariant
 		tls  *tls.Config
-		cfg  *config.Tls
+		cfg  *config.ServerTls
 		root *config.TlsConfig
 	}
 )
@@ -25,7 +25,7 @@ func (s *base) GetServer() invariant {
 	return s.srv
 }
 
-func (s *base) GetConfig() *config.Tls {
+func (s *base) GetConfig() *config.ServerTls {
 	return s.cfg
 }
 

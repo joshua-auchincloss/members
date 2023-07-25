@@ -13,11 +13,11 @@ import (
 type (
 	Membership struct {
 		bun.BaseModel  `bun:"members"`
-		Dns            string    `bun:"dns"`
-		PublicAddress  string    `bun:"address"`
-		Service        Service   `bun:"service"`
-		JoinTime       time.Time `bun:"time,default:current_timestamp"`
-		LastHealthTime time.Time `bun:"last_health,default:current_timestamp"`
+		Dns            string    `bun:"dns" json:"dns"`
+		PublicAddress  string    `bun:"address" json:"address"`
+		Service        Service   `bun:"service" json:"service"`
+		JoinTime       time.Time `bun:"registration,default:current_timestamp" json:"registration"`
+		LastHealthTime time.Time `bun:"last_health,default:current_timestamp" json:"last_health"`
 	}
 )
 

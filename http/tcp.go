@@ -22,7 +22,7 @@ var (
 
 func NewTCP(
 	watcher errs.Watcher,
-	cfg *config.Tls,
+	cfg *config.ServerTls,
 	root *config.TlsConfig,
 	t *tls.Config,
 	addr string,

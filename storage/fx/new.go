@@ -5,6 +5,7 @@ import (
 	"members/config"
 	"members/logging"
 	"members/storage"
+	"members/storage/dgraph"
 	"members/storage/mem"
 	"members/storage/mysql"
 	pgres "members/storage/pgx"
@@ -13,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func create_sql(prov config.ConfigProvider, root *zerolog.Logger, create storage.Initializer) (storage.Store, error) {
+func logger_for(prov config.ConfigProvider, root *zerolog.Logger) *zerolog.Logger {
 	store := prov.GetConfig().Storage
 	sub := logging.WithSub(root, "storage", func(ctx zerolog.Context) zerolog.Context {
 		ctx = ctx.Str("storage-kind", store.Kind).
@@ -27,6 +28,22 @@ func create_sql(prov config.ConfigProvider, root *zerolog.Logger, create storage
 		}
 		return ctx
 	})
+	return sub
+}
+
+func create_graph(prov config.ConfigProvider, root *zerolog.Logger, create storage.GraphInitializer) (storage.Store, error) {
+	sub := logger_for(prov, root)
+	if db, err := create(prov); err != nil {
+		return nil, err
+	} else {
+		gr := storage.NewGraph(db)
+		gr.WithLogger(sub)
+		return gr, nil
+	}
+}
+
+func create_sql(prov config.ConfigProvider, root *zerolog.Logger, create storage.SqlInitializer) (storage.Store, error) {
+	sub := logger_for(prov, root)
 	if db, err := create(prov); err != nil {
 		return nil, err
 	} else {
@@ -65,6 +82,14 @@ func New(prov config.ConfigProvider, root *zerolog.Logger) (storage.Store, error
 			prov,
 			root,
 			mysql.New,
+		)
+	case utils.AnyEq([]string{
+		"dgraph", "dgraph-mem", "graph", "graph-mem",
+	}, st):
+		return create_graph(
+			prov,
+			root,
+			dgraph.New,
 		)
 	}
 	return nil, fmt.Errorf("invalid storage type: %s", st)

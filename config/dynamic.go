@@ -159,8 +159,8 @@ func build_client_args(
 		args.Dns,
 		member_list(common.ServiceAdmin, args.Addresses)...,
 	)
-	for d, members := range args.Servers {
-		dns.merge_with(common.ServiceAdmin, d, member_list(common.ServiceAdmin, members))
+	for d, members := range args.Trusted {
+		dns.merge_with(common.ServiceAdmin, d, member_list(common.ServiceAdmin, members.Addresses))
 	}
 	return dns
 }

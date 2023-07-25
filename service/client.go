@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"members/common"
 	"members/config"
 	server "members/http"
@@ -30,26 +29,28 @@ func NewClientFactory[T any](key common.Service, impl func(ci grpc.ClientConnInt
 		func(prov config.ConfigProvider, args *common.DialArgs) (*T, error) {
 			call := []grpc.DialOption{}
 			cfg := prov.GetConfig()
-			var root_pool *x509.CertPool
-			var root_tls *tls.Config
-			var cfg_tls *config.Tls
+			var err error
+			var certs *tls.Config
+			var cfg_tls *config.ClientTls
 			if args.TLS && cfg.Tls.Enabled {
-				cfg_tls = cfg.Tls.GetService(key)
-				ca, err := cfg_tls.LoadCA()
+				global := cfg.Members.Global
+				cli := cfg.Members.GetClient(key)
+				if ct, ok := cli.Trusted[args.DNS]; !ok {
+					cfg_tls = &global
+				} else {
+					cfg_tls = &ct
+				}
+				certs, err = cfg_tls.Build()
 				if err != nil {
 					return nil, err
 				}
-				root_pool = ca
-				root_tls = &tls.Config{
-					RootCAs: root_pool,
-				}
 				call = append(call, grpc.WithTransportCredentials(
-					credentials.NewClientTLSFromCert(root_pool, cfg_tls.ServerName),
+					credentials.NewTLS(certs),
 				))
 			} else {
 				call = append(call, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			}
-			dial, err := server.NewClient(key, prov, root_tls, args)
+			dial, err := server.NewClient(key, prov, certs, args)
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +58,6 @@ func NewClientFactory[T any](key common.Service, impl func(ci grpc.ClientConnInt
 				log.Info().Str("address", addr).Msg("dialling...")
 				return dial.Dial(ctx, addr)
 			}))
-
 			conn, err := server.DialGrpc(context.TODO(), key, args.DNS, call...)
 			if err != nil {
 				return nil, err

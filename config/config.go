@@ -29,6 +29,7 @@ type (
 		Drop     bool   `mapstructure:"drop" env:"DROP,overwrite"`
 		Debug    bool   `mapstructure:"debug" env:"DEBUG,overwrite"`
 		Create   bool   `mapstructure:"create" env:"CREATE,overwrite"`
+		Tls      *DbTls `mapstructure:"tls" env:"TLS,overwrite"`
 	}
 
 	PortJoin struct {
@@ -36,30 +37,39 @@ type (
 		Health  []uint32 `mapstructure:"health" env:"HEALTH,overwrite"`
 	}
 
-	Tls struct {
+	tlsFiles struct {
 		ServerName string   `mapstructure:"name" env:"NAME,overwrite"`
 		CertFile   string   `mapstructure:"cert" env:"CERT,overwrite"`
 		KeyFile    string   `mapstructure:"key" env:"KEY,overwrite"`
 		Ca         []string `mapstructure:"ca" env:"CA,overwrite"`
 	}
 
-	ClientTlsConfig struct {
-		Trusted map[string][]string `mapstructure:"trusted"`
-		Ca      []string            `mapstructure:"ca" env:"CA,overwrite"`
+	DbTls struct {
+		tlsFiles `mapstructure:",squash"`
+	}
+
+	ServerTls struct {
+		tlsFiles `mapstructure:",squash"`
+	}
+
+	ClientTls struct {
+		tlsFiles   `mapstructure:",squash"`
+		Addresses  []string `mapstructure:"addresses"`
+		SkipVerify bool     `mapstructure:"skip-verify" env:"SKIP_VERIFY,overwrite"`
 	}
 
 	TlsConfig struct {
-		Enabled    bool `env:"ENABLED"`
-		Validation bool `env:"VALIDATION"`
-		Registry   *Tls `env:",prefix=REGISTRY_"`
-		Health     *Tls `env:",prefix=HEALTH_"`
+		Enabled    bool       `mapstructure:"enable" env:"ENABLED"`
+		Validation bool       `mapstructure:"validate" env:"VALIDATION"`
+		Registry   *ServerTls `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin      *ServerTls `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Health     *ServerTls `mapstructure:"health" env:",prefix=HEALTH_"`
 	}
 
 	ClientArgs struct {
-		Dns       string   `mapstructure:"dns" env:"DNS,overwrite"`
-		Addresses []string `mapstructure:"addresses" env:"ADDRESSES,overwrite"`
-
-		Servers map[string][]string `mapstructure:"servers"`
+		Dns       string               `mapstructure:"dns" env:"DNS,overwrite"`
+		Addresses []string             `mapstructure:"addresses" env:"ADDRESSES,overwrite"`
+		Trusted   map[string]ClientTls `mapstructure:"servers"`
 	}
 
 	Service struct {
@@ -68,15 +78,15 @@ type (
 	}
 
 	Members struct {
-		Protocol              string           `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
-		Dns                   string           `mapstructure:"dns" env:"DNS,overwrite"`
-		Bind                  string           `mapstructure:"bind" env:"BIND,overwrite"`
-		Join                  []string         `mapstructure:"join" env:"JOIN,overwrite"`
-		Member                uint32           `mapstructure:"member" env:"MEMBER,overwrite"`
-		ConnectionsPerService uint32           `mapstructure:"connections" env:"CONNECTIONS,overwrite"`
-		Registry              *Service         `mapstructure:"registry" env:",prefix=REGISTRY_"`
-		Admin                 *Service         `mapstructure:"admin" env:",prefix=ADMIN_"`
-		Client                *ClientTlsConfig `env:",prefix=CLIENT_"`
+		Protocol              string    `mapstructure:"protocol" env:"PROTOCOL,overwrite"`
+		Dns                   string    `mapstructure:"dns" env:"DNS,overwrite"`
+		Bind                  string    `mapstructure:"bind" env:"BIND,overwrite"`
+		Join                  []string  `mapstructure:"join" env:"JOIN,overwrite"`
+		Member                uint32    `mapstructure:"member" env:"MEMBER,overwrite"`
+		ConnectionsPerService uint32    `mapstructure:"connections" env:"CONNECTIONS,overwrite"`
+		Registry              *Service  `mapstructure:"registry" env:",prefix=REGISTRY_"`
+		Admin                 *Service  `mapstructure:"admin" env:",prefix=ADMIN_"`
+		Global                ClientTls `mapstructure:"global" env:"GLOBAL,overwrite"`
 	}
 
 	Config struct {
@@ -88,10 +98,10 @@ type (
 	}
 )
 
-func (t *TlsConfig) GetService(key common.Service) *Tls {
+func (t *TlsConfig) GetService(key common.Service) *ServerTls {
 	switch key {
 	case common.ServiceAdmin:
-		return t.Health
+		return t.Admin
 	case common.ServiceRegistry:
 		return t.Registry
 	case common.ServiceHealth:
@@ -110,9 +120,11 @@ func (m *Members) GetClient(key common.Service) *ClientArgs {
 	return nil
 }
 
-func (t *Tls) LoadCA() (*x509.CertPool, error) {
+func (t *tlsFiles) LoadCA() (*x509.CertPool, error) {
 	pool := x509.NewCertPool()
-
+	if t == nil {
+		return pool, nil
+	}
 	for _, fi := range t.Ca {
 		bts, err := os.ReadFile(fi)
 		if err != nil {
@@ -125,20 +137,27 @@ func (t *Tls) LoadCA() (*x509.CertPool, error) {
 	return pool, nil
 }
 
-func (t *Tls) Build() (*tls.Config, error) {
-	tc, err := tls.LoadX509KeyPair(t.CertFile, t.KeyFile)
-	if err != nil {
-		return nil, err
-	}
+func (t *tlsFiles) Build() (*tls.Config, error) {
 	pool, err := t.LoadCA()
 	if err != nil {
 		return nil, err
 	}
-	return &tls.Config{
-		ServerName:   t.ServerName,
-		Certificates: []tls.Certificate{tc},
-		RootCAs:      pool,
-	}, nil
+	certs := []tls.Certificate{}
+	base := &tls.Config{
+		RootCAs: pool,
+	}
+	if t != nil {
+		if !utils.ZeroStr(t.CertFile) && !utils.ZeroStr(t.KeyFile) {
+			tc, err := tls.LoadX509KeyPair(t.CertFile, t.KeyFile)
+			if err != nil {
+				return nil, err
+			}
+			certs = append(certs, tc)
+		}
+		base.ServerName = t.ServerName
+		base.Certificates = certs
+	}
+	return base, nil
 }
 
 func (m *Members) GetService(key common.Service) *Service {
@@ -169,6 +188,7 @@ func getConfig(ctx *cli.Context) (*Config, error) {
 		v.SetConfigName(filecfg)
 		v.SetConfigType("yaml")
 		v.AddConfigPath(".")
+		log.Print("using config file")
 		if err := v.ReadInConfig(); err != nil {
 			return nil, err
 		}
@@ -181,6 +201,6 @@ func getConfig(ctx *cli.Context) (*Config, error) {
 	if err := envconfig.Process(ctx.Context, &cfg); err != nil {
 		return nil, err
 	}
-	log.Info().Interface("config", cfg).Send()
+	// log.Panic().Interface("config", cfg).Send()
 	return &cfg, nil
 }

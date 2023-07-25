@@ -1,20 +1,33 @@
-cluster:
-  registry:
-    client:
-      # dns: localhost
-      # addresses:
-      #   - 127.0.0.1:9009
-      servers:
-        localhost:
-          - 127.0.0.1:9009
-          - 127.0.0.1:8009
+tls:
+  enable: true
+  registry: &TlsFiles
+    name: localhost
+    cert: ./test_certs/client-cert.pem
+    key: ./test_certs/client-key.pem
+    ca:
+      - ./test_certs/ca.pem
+  admin: *TlsFiles
+  health: *TlsFiles
 
-  admin:
+cluster:
+  global: *TlsFiles
+  registry:
+    server:
+      service: 9009
+      health: 4004
     client:
-      # dns: localhost
-      # addresses:
-      #   - 127.0.0.1:9010
       servers:
-        localhost:
-          - 127.0.0.1:9010
-          - 127.0.0.1:8010
+        addresses:
+          localhost:
+            - 127.0.0.1:9009
+            - 127.0.0.1:8009
+  admin:
+    server:
+      service: 9010
+      health: 4005
+    client:
+      servers:
+        addresses:
+          localhost:
+            - 127.0.0.1:9010
+            - 127.0.0.1:8010

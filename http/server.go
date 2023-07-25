@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -20,7 +21,7 @@ type (
 		GetServer() invariant
 		TlsEnabled() bool
 		GetTLS() *tls.Config
-		GetConfig() *config.Tls
+		GetConfig() *config.ServerTls
 		Stop(context.Context, time.Duration) error
 	}
 
@@ -37,7 +38,7 @@ var (
 
 func New(
 	prov config.ConfigProvider,
-	t *config.Tls,
+	t *config.ServerTls,
 	watcher errs.Watcher,
 	addr string,
 	handler http.Handler,
@@ -86,11 +87,15 @@ func New(
 func starter(srv Server) chan error {
 	ch := make(chan error, 1)
 	go func(ch chan error) {
-		if srv.TlsEnabled() {
-			cf := srv.GetConfig()
+		cf := srv.GetConfig()
+		tls := srv.TlsEnabled()
+		switch {
+		case tls && cf != nil:
 			ch <- srv.GetServer().ListenAndServeTLS(cf.CertFile, cf.KeyFile)
-		} else {
+		case !tls:
 			ch <- srv.GetServer().ListenAndServe()
+		default:
+			log.Fatal().Msg("tls enabled with no cert config")
 		}
 	}(ch)
 	return ch

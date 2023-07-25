@@ -103,7 +103,14 @@ var (
 	KnownParent           = default_v[string]{"cluster-known", "KNOWN_HOST", stringGetter, ""}
 	BindIpDefn            = default_v[string]{"cluster-bind", "BIND_IP", stringGetter, "127.0.0.1"}
 
-	RemoteTlsDefn   = default_v[bool]{"tls", "TLS", boolGetter, true}
+	RemoteTlsDefn         = default_v[bool]{"tls", "TLS", boolGetter, true}
+	TlsAdminServerCert    = default_v[string]{"tls-admin-server-cert", "TLS_ADMIN_SERVER_CERT", stringGetter, ""}
+	TlsAdminServerKey     = default_v[string]{"tls-admin-server-key", "TLS_ADMIN_SERVER_KEY", stringGetter, ""}
+	TlsRegistryServerCert = default_v[string]{"tls-registry-server-cert", "TLS_REGISTRY_SERVER_CERT", stringGetter, ""}
+	TlsRegistryServerKey  = default_v[string]{"tls-registry-server-key", "TLS_REGISTRY_SERVER_KEY", stringGetter, ""}
+	TlsHealthServerCert   = default_v[string]{"tls-health-server-cert", "TLS_HEALTH_SERVER_CERT", stringGetter, ""}
+	TlsHealthServerKey    = default_v[string]{"tls-health-server-key", "TLS_HEALTH_SERVER_KEY", stringGetter, ""}
+
 	RemoteDebugDefn = default_v[bool]{"debug", "DEBUG", boolGetter, false}
 
 	RegistrySvcDefn = default_v[[]uint32]{"cluster-registry-server-service",
@@ -170,6 +177,12 @@ var (
 	}
 
 	string_opts = []default_v[string]{
+		TlsAdminServerCert,
+		TlsAdminServerKey,
+		TlsHealthServerCert,
+		TlsHealthServerKey,
+		TlsRegistryServerCert,
+		TlsRegistryServerKey,
 		ConfigYaml,
 		KnownParent,
 		BindIpDefn,

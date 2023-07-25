@@ -20,7 +20,7 @@ type (
 		db     *bun.DB
 		logger *zerolog.Logger
 	}
-	Initializer = func(prov config.ConfigProvider) (*bun.DB, error)
+	SqlInitializer = func(prov config.ConfigProvider) (*bun.DB, error)
 )
 
 var (

@@ -67,6 +67,12 @@ tasks:
         -p 5432:5432
         postgres
 
+  dgraph:
+    cmds:
+      - docker run --name dgraph
+        -d -p "8080:8080" -p "9080:9080"
+        -v $(pwd)/data/dgraph:/dgraph dgraph/standalone:latest
+
   postgres-schema:
     dotenv:
       - env/postgres.env
@@ -86,10 +92,12 @@ tasks:
       - $run schema
 
   cluster:
+    env:
+      CONFIG: ./env/client.yaml
     dotenv:
       - env/tls.env
     cmds:
-      - $run cluster start
+      - $run cluster start --config $CONFIG
 
   health:
     dotenv:
@@ -101,13 +109,21 @@ tasks:
 
   list:
     env:
-      CONFIG: env/client.yaml
+      # CONFIG: env/client.yaml
     dotenv:
       - env/tls.env
       - env/client.env
     cmds:
       - $run cluster describe
         $flags
+
+  graph-cluster:
+    dotenv:
+      - env/dgraph.env
+      # - env/tls.env
+      - env/a.env
+    cmds:
+      - task cluster
 
   postgres-cluster:
     dotenv:
