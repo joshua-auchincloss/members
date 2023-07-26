@@ -4,7 +4,7 @@ import (
 	"members/common"
 	"members/config"
 	"members/service"
-	"members/storage"
+	"members/storage/base"
 
 	"go.uber.org/fx"
 )
@@ -39,7 +39,7 @@ func create(svc *service.SvcFramework) *adminFactory {
 	return &adminFactory{}
 }
 
-func (h *adminFactory) CreateService(cfg config.ConfigProvider, store storage.Store) *adminService {
+func (h *adminFactory) CreateService(cfg config.ConfigProvider, store base.BaseStore) *adminService {
 	return &adminService{
 		store: store,
 	}

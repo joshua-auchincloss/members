@@ -3,7 +3,7 @@ package server
 import (
 	"members/common"
 	"members/config"
-	"members/storage"
+	storage "members/storage/base"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/resolver"
@@ -12,7 +12,7 @@ import (
 type (
 	resolverBuilder struct {
 		kind  common.Service
-		store storage.Store
+		store storage.BaseStore
 		prov  config.ConfigProvider
 	}
 
@@ -22,7 +22,7 @@ type (
 
 		kind  common.Service
 		prov  config.ConfigProvider
-		store storage.Store
+		store storage.BaseStore
 	}
 )
 

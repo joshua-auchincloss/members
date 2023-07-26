@@ -4,42 +4,67 @@ import (
 	"context"
 	"members/common"
 	"members/config"
-	"time"
+	"members/storage/base"
+	"members/storage/conns/sql"
 
 	"github.com/rs/zerolog"
+	"github.com/uptrace/bun"
 )
 
 type (
 	Store interface {
-		WithLogger(sub *zerolog.Logger)
-		Setup(config config.ConfigProvider) error
-		Teardown() error
+		base.BaseStore
 		Registered(key string) bool
 		GetHandler(key string) (*common.RegisteredProto, error)
-		UpsertMembership(ctx context.Context, meta *common.Membership) error
-		GetMembers(ctx context.Context, kind ...common.Service) ([]*common.Membership, error)
-		CleanOldMembers(ctx context.Context, from time.Duration) error
 		CreateProject(ctx context.Context, project *common.ProtoProject, proto *common.ProtoMeta) error
 		RegisterProto(ctx context.Context, proto *common.ProtoMeta, data *common.RegisteredProto) error
 	}
-
-	StorageType = int
+	storeFactory[
+		DB any,
+		T func(prov config.ConfigProvider) (DB, error),
+		F func(DB) (base.BaseStore, error),
+	] struct {
+		prov    config.ConfigProvider
+		root    *zerolog.Logger
+		new     T
+		convert F
+	}
 )
 
-func Setup(config config.ConfigProvider, store Store) error {
-	return store.Setup(config)
-}
-
-func WithStore(ctx context.Context, store Store) context.Context {
-	return context.WithValue(ctx, common.ContextKeys(common.ContextKeyWithStore), store)
-}
-
-func GetStore(ctx context.Context) Store {
-	return ctx.Value(common.ContextKeyWithStore).(Store)
-}
-
-const (
-	Memory StorageType = iota
-	Postgres
-	Mysql
+var (
+	_ base.StoreFactory = ((*storeFactory[
+		*bun.DB,
+		sql.SqlInitializer,
+		sql.SqlConverter,
+	])(nil))
 )
+
+func NewStoreFactory[
+	DB any,
+	T func(prov config.ConfigProvider) (DB, error),
+	F func(DB) (base.BaseStore, error),
+](
+	prov config.ConfigProvider,
+	root *zerolog.Logger,
+	new T,
+	convert F,
+) base.StoreFactory {
+	return &storeFactory[DB, T, F]{
+		prov,
+		root,
+		new,
+		convert,
+	}
+}
+
+func (s *storeFactory[DB, y, z]) New() (base.BaseStore, error) {
+	db, err := s.new(s.prov)
+	if err != nil {
+		return nil, err
+	}
+	if impl, err := s.convert(db); err != nil {
+		return nil, err
+	} else {
+		return impl, nil
+	}
+}

@@ -1,5 +1,7 @@
 package common
 
+import "members/common/internal"
+
 type (
 	EventKind int
 	Event     struct {
@@ -9,7 +11,7 @@ type (
 
 const (
 	EventUnknown          EventKind = iota
-	EventMembershipUpdate EventKind = iota + 101
+	EventMembershipUpdate EventKind = iota + internal.EventOffset
 	EventBulkMembershipUpdate
 	EventMembershipAvailability
 	EventBulkMembershipAvailability

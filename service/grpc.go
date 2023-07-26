@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	server "members/http"
+	"members/server"
 	"net/http"
 	"time"
 )

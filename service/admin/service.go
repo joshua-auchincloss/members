@@ -6,7 +6,7 @@ import (
 	admin "members/grpc/api/v1/admin/adminconnect"
 	"members/grpc/api/v1/common"
 	"members/service"
-	"members/storage"
+	"members/storage/base"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -17,7 +17,7 @@ type (
 	adminService struct {
 		admin.UnimplementedAdminHandler
 		service.BaseService
-		store storage.Store
+		store base.BaseStore
 	}
 )
 

@@ -1,8 +1,7 @@
 version: "3"
 env:
   run: go run ./cli
-  flags: --tls
-  # --debug
+  flags: --tls --debug
 tasks:
   kv:
     cmds:
@@ -73,6 +72,13 @@ tasks:
         -d -p "8080:8080" -p "9080:9080"
         -v $(pwd)/data/dgraph:/dgraph dgraph/standalone:latest
 
+  neo4j:
+    cmds:
+      - docker run -d
+        -p 7474:7474 -p 7687:7687
+        -v $HOME/neo4j/data:/data
+        neo4j
+
   postgres-schema:
     dotenv:
       - env/postgres.env
@@ -109,7 +115,7 @@ tasks:
 
   list:
     env:
-      # CONFIG: env/client.yaml
+      CONFIG: env/client.yaml
     dotenv:
       - env/tls.env
       - env/client.env
@@ -125,12 +131,37 @@ tasks:
     cmds:
       - task cluster
 
-  postgres-cluster:
+  neo4j-cluster:
     dotenv:
-      - env/postgres.env
+      - env/neo4j.env
+      # - env/tls.env
       - env/a.env
     cmds:
       - task cluster
+
+
+  postgres-cluster:
+    dotenv:
+      - env/postgres.env
+    cmds:
+      - task cluster
+
+  postgres-cluster-a:
+    env:
+      CONFIG: env/a.yaml
+    # dotenv:
+
+    # - env/a.env
+    cmds:
+      - task postgres-cluster
+
+  postgres-cluster-b:
+    env:
+      CONFIG: env/b.yaml
+    # dotenv:
+    #   - env/b.env
+    cmds:
+      - task postgres-cluster
 
   memory-cluster:
     dotenv:

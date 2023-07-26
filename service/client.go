@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"members/common"
 	"members/config"
-	server "members/http"
+	"members/server"
 	"net"
 
 	"github.com/rs/zerolog/log"

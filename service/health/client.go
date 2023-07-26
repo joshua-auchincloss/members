@@ -3,7 +3,7 @@ package health
 import (
 	"members/common"
 	"members/grpc/api/v1/health"
-	server "members/http"
+	"members/server"
 	"members/service"
 
 	"go.uber.org/fx"

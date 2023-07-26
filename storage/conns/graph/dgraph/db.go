@@ -2,7 +2,6 @@ package dgraph
 
 import (
 	"members/config"
-	"members/utils"
 	"net"
 	"strconv"
 
@@ -22,23 +21,12 @@ var (
 
 func New(prov config.ConfigProvider) (*dgo.Dgraph, error) {
 	cfg := prov.GetConfig()
-	user := cfg.Storage.Username
-	if utils.ZeroStr(user) {
-		user = dgraph_user
-	}
-	pass := cfg.Storage.Password
-	if utils.ZeroStr(pass) {
-		pass = dgraph_pass
-	}
-	port := cfg.Storage.Port
-	if utils.IsZero(port) {
-		port = dgraph_port
-	}
-	host := cfg.Storage.URI
-	if utils.ZeroStr(host) {
-		host = dgraph_host
-	}
-
+	cfg.Storage.OverrideIfNull(
+		dgraph_user,
+		dgraph_pass,
+		dgraph_port,
+		dgraph_host,
+	)
 	var tr credentials.TransportCredentials
 	if cfg.Storage.SSL {
 		tlscfg := cfg.Storage.Tls
@@ -55,7 +43,7 @@ func New(prov config.ConfigProvider) (*dgo.Dgraph, error) {
 		tr = insecure.NewCredentials()
 	}
 	d, err := grpc.Dial(
-		net.JoinHostPort(host, strconv.Itoa(int(port))),
+		net.JoinHostPort(cfg.Storage.URI, strconv.Itoa(int(cfg.Storage.Port))),
 		grpc.WithTransportCredentials(tr),
 	)
 	if err != nil {

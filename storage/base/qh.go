@@ -1,4 +1,4 @@
-package storage_fx
+package base
 
 import (
 	"context"

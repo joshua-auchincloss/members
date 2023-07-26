@@ -1,6 +1,7 @@
 package config
 
 import (
+	cluster "members/clustering"
 	"members/common"
 	"sync"
 
@@ -14,7 +15,7 @@ type (
 		ch event_chan
 
 		subs     []event_chan
-		clusters map[common.Service]*DnsList
+		clusters map[common.Service]cluster.DnsList
 
 		prov ConfigProvider
 	}
@@ -93,12 +94,12 @@ func (d *DynamicConfig) GetDns(svc common.Service, dns string) []string {
 	if !ok {
 		return known
 	}
-	for _, addrs := range aware.candidates(dns) {
+	for _, addrs := range aware.Candidates(dns) {
 		known = append(known, addrs...)
 	}
 	return known
 }
-func (d *DynamicConfig) PeekAll() map[common.Service]*DnsList {
+func (d *DynamicConfig) PeekAll() map[common.Service]cluster.DnsList {
 	d.RLock()
 	defer d.RUnlock()
 	return d.clusters
@@ -109,7 +110,7 @@ func (d *DynamicConfig) AllKnown() map[string][]string {
 	defer d.RUnlock()
 	known := map[string][]string{}
 	for _, dns_clusters := range d.clusters {
-		for dns, addrs := range dns_clusters.candidates() {
+		for dns, addrs := range dns_clusters.Candidates() {
 			var r []string
 			var ok bool
 			if r, ok = known[dns]; !ok {
@@ -146,21 +147,21 @@ func (d *DynamicConfig) AddCluster(svc common.Service, dns, addr string, lock ..
 	}
 	m, ok := d.clusters[svc]
 	if !ok {
-		m = new_dns(dns)
+		m = cluster.NewDns(dns)
 	}
-	m.add_to_cluster(svc, dns, addr, d.prov.GetConfig().Members.Protocol)
+	m.AddToCluster(svc, dns, addr, d.prov.GetConfig().Members.Protocol)
 	d.clusters[svc] = m
 }
 
 func build_client_args(
 	svc common.Service,
-	args *ClientArgs) *DnsList {
-	dns := new_dns(
+	args *ClientArgs) cluster.DnsList {
+	dns := cluster.NewDns(
 		args.Dns,
-		member_list(common.ServiceAdmin, args.Addresses)...,
+		cluster.MemberList(common.ServiceAdmin, args.Addresses)...,
 	)
 	for d, members := range args.Trusted {
-		dns.merge_with(common.ServiceAdmin, d, member_list(common.ServiceAdmin, members.Addresses))
+		dns.MergeWith(common.ServiceAdmin, d, cluster.MemberList(common.ServiceAdmin, members.Addresses))
 	}
 	return dns
 }
@@ -168,7 +169,7 @@ func build_client_args(
 func add_client_to_start(
 	svc common.Service,
 	known *Members,
-	start *map[common.Service]*DnsList,
+	start *map[common.Service]cluster.DnsList,
 ) {
 	cli := known.GetClient(svc)
 	if cli != nil {
@@ -178,7 +179,7 @@ func add_client_to_start(
 
 func getDynamic(prov ConfigProvider) (*DynamicConfig, error) {
 	known := prov.GetConfig().Members
-	start := map[common.Service]*DnsList{}
+	start := map[common.Service]cluster.DnsList{}
 	add_client_to_start(common.ServiceAdmin, known, &start)
 	add_client_to_start(common.ServiceRegistry, known, &start)
 	log.Info().Interface("start", known).Send()

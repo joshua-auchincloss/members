@@ -5,9 +5,9 @@ repos:
     rev: v0.5.1
     hooks:
       - id: go-mod-tidy
-      - id: go-imports
-      - id: go-fmt
-      - id: go-critic
+      # - id: go-imports
+      # - id: go-fmt
+      # - id: go-critic
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:

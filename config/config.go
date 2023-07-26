@@ -171,6 +171,26 @@ func (m *Members) GetService(key common.Service) *Service {
 	}
 }
 
+func (s *Storage) OverrideIfNull(
+	user string,
+	pass string,
+	port uint32,
+	uri string,
+) {
+	if utils.ZeroStr(s.Username) {
+		s.Username = user
+	}
+	if utils.ZeroStr(s.Password) {
+		s.Password = pass
+	}
+	if utils.IsZero(s.Port) {
+		s.Port = port
+	}
+	if utils.ZeroStr(s.URI) {
+		s.URI = uri
+	}
+}
+
 func getConfig(ctx *cli.Context) (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("-"),

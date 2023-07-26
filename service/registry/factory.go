@@ -1,12 +1,9 @@
 package registry
 
 import (
-	"members/common"
 	"members/config"
 	"members/service"
 	"members/storage"
-
-	"go.uber.org/fx"
 )
 
 type (
@@ -15,25 +12,27 @@ type (
 )
 
 var (
-	// Module = service.GrpcModule[registryService, registry.UnimplementedRegistryHandler](common.ServiceRegistry, registryconnect.NewRegistryHandler)
+// Module = service.GrpcModule[registryService, registry.UnimplementedRegistryHandler](common.ServiceRegistry, registryconnect.NewRegistryHandler)
 
-	Module = fx.Module(
-		"registry-service",
-		fx.Provide(
-			fx.Annotate(
-				create,
-				fx.As(new(RegistryFactory)),
-			),
-		),
-		fx.Invoke(
-			service.Create[*registryService](common.ServiceRegistry),
-		),
-	)
+// Module = fx.Module(
+//
+//	"registry-service",
+//	fx.Provide(
+//		fx.Annotate(
+//			create,
+//			fx.As(new(RegistryFactory)),
+//		),
+//	),
+//	fx.Invoke(
+//		service.Create[*registryService](common.ServiceRegistry),
+//	),
+//
+// )
 )
 
-var (
-	_ RegistryFactory = ((*registryFactory)(nil))
-)
+// var (
+// 	_ RegistryFactory = ((*registryFactory)(nil))
+// )
 
 func create(svc *service.SvcFramework) *registryFactory {
 	return &registryFactory{}

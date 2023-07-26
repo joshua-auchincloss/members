@@ -4,7 +4,7 @@ import (
 	"members/common"
 	"members/config"
 	"members/service"
-	"members/storage"
+	"members/storage/base"
 	"time"
 
 	"go.uber.org/fx"
@@ -44,7 +44,7 @@ func New() ServiceFactory {
 	}
 }
 
-func (h *healthFactory) CreateService(cfg config.ConfigProvider, store storage.Store) *healthService {
+func (h *healthFactory) CreateService(cfg config.ConfigProvider, store base.BaseStore) *healthService {
 	return &healthService{
 		store: store,
 	}

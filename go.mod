@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/jackc/pgx/v5 v5.4.2
+	github.com/neo4j/neo4j-go-driver/v5 v5.10.0
 	github.com/quic-go/quic-go v0.37.0
 	github.com/rodaine/table v1.1.0
 	github.com/rs/zerolog v1.29.1

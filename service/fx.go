@@ -5,7 +5,7 @@ import (
 	"members/common"
 	"members/config"
 	errs "members/errors"
-	"members/storage"
+	"members/storage/base"
 	"os"
 	"sync"
 	"time"
@@ -97,14 +97,14 @@ func Create[T Service](key common.Service) func(
 	prov config.ConfigProvider,
 	fw *SvcFramework,
 	factory ServiceFactory[T],
-	store storage.Store,
+	store base.BaseStore,
 	root *zerolog.Logger,
 	watcher errs.Watcher) error {
 	return func(
 		prov config.ConfigProvider,
 		fw *SvcFramework,
 		factory ServiceFactory[T],
-		store storage.Store,
+		store base.BaseStore,
 		root *zerolog.Logger,
 		watcher errs.Watcher) error {
 		log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")

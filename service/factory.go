@@ -5,7 +5,7 @@ import (
 	"members/common"
 	"members/config"
 	errs "members/errors"
-	"members/storage"
+	"members/storage/base"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -35,6 +35,6 @@ type (
 		BuildLogger(root *zerolog.Logger)
 	}
 	ServiceFactory[T Service] interface {
-		CreateService(cfg config.ConfigProvider, store storage.Store) T
+		CreateService(cfg config.ConfigProvider, store base.BaseStore) T
 	}
 )

@@ -3,7 +3,7 @@ package admin
 import (
 	"members/common"
 	"members/grpc/api/v1/admin"
-	server "members/http"
+	"members/server"
 	"members/service"
 
 	"go.uber.org/fx"

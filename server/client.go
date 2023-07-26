@@ -15,16 +15,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	lb_scheme = "round"
-)
-
 type (
 	Client interface {
 		Dial(ctx context.Context, addr string) (net.Conn, error)
 		DialFallback(ctx context.Context, addrs ...string) (net.Conn, error)
 	}
-	dialer = func(ctx context.Context, addr string) (net.Conn, error)
+	dialer = func(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error)
 
 	clientbase struct {
 		args *common.DialArgs
@@ -48,9 +44,10 @@ func NewClient(
 	args *common.DialArgs,
 ) (Client, error) {
 	cf := prov.GetConfig()
+	log.Debug().Str("protocol", cf.Members.Protocol).Send()
+
 	switch cf.Members.Protocol {
 	case "udp":
-		log.Debug().Str("protocol", "udp").Send()
 		return &udpClient{clientbase{
 			args,
 			tlscfg,
@@ -68,16 +65,28 @@ func NewClient(
 	}
 }
 
-func DialTcp(ctx context.Context, addr string) (net.Conn, error) {
-	return net.Dial("tcp", addr)
+func baseDial(proto string) func(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
+	return func(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
+		return utils.LoopOrCancel(ctx, timeout, time.Nanosecond*15, func() (net.Conn, error) {
+			return net.Dial(proto, addr)
+		})
+	}
 }
 
-func DialUDP(ctx context.Context, addr string) (net.Conn, error) {
-	return net.Dial("udp", addr)
+func DialTcp(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
+	return baseDial("tcp")(ctx, addr, timeout)
+}
+
+func DialUDP(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
+	return baseDial("udp")(ctx, addr, timeout)
 }
 
 func (cli *clientbase) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	return cli.dialer(ctx, addr)
+	if conn, err := cli.dialer(ctx, addr, time.Millisecond*1); err != nil {
+		return nil, err
+	} else {
+		return *conn, nil
+	}
 }
 
 func (cli *clientbase) DialFallback(ctx context.Context, addrs ...string) (net.Conn, error) {
@@ -100,5 +109,4 @@ func DialGrpc(ctx context.Context, svc common.Service, dns string, opts ...grpc.
 	)
 	return grpc.Dial(fmt.Sprintf("%s:///%s", common.ServiceKeys.Get(svc), dns),
 		opts...)
-	// return nil, errors.New("no hosts available")
 }

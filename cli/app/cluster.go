@@ -17,7 +17,6 @@ import (
 	"members/service"
 	admin_impl "members/service/admin"
 	health_impl "members/service/health"
-	"members/service/registry"
 	"members/service/starter"
 	storage_fx "members/storage/fx"
 	"members/utils"
@@ -54,7 +53,7 @@ func resolver_printer(prov config.ConfigProvider) {
 	for svc, clust := range prov.GetDynamic().PeekAll() {
 		for dns, addrs := range clust.Peek() {
 			for _, addr := range addrs {
-				tbl.AddRow(dns, common.ServiceKeys.Get(svc), addr.Addr, addr.Available())
+				tbl.AddRow(dns, common.ServiceKeys.Get(svc), addr.Address(), addr.Visible())
 			}
 		}
 
@@ -189,7 +188,7 @@ var (
 						service.Module,
 						health_impl.Module,
 						admin_impl.Module,
-						registry.Module,
+						// registry.Module,
 						starter.Module,
 						p2p.Module,
 					)

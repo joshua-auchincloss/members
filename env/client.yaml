@@ -16,6 +16,9 @@ cluster:
       service: 9009
       health: 4004
     client:
+      dns: localhost
+      addresses:
+        - 127.0.0.1:9009
       servers:
         addresses:
           localhost:
@@ -26,6 +29,9 @@ cluster:
       service: 9010
       health: 4005
     client:
+      dns: localhost
+      addresses:
+        - 127.0.0.1:9010
       servers:
         addresses:
           localhost:

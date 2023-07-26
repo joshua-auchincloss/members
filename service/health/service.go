@@ -7,7 +7,7 @@ import (
 	health "members/grpc/api/v1/health/healthconnect"
 	"members/grpc/api/v1/health/pkg"
 	"members/service"
-	"members/storage"
+	"members/storage/base"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -18,7 +18,7 @@ type (
 		health.UnimplementedHealthHandler
 		service.BaseService
 
-		store storage.Store
+		store base.BaseStore
 	}
 )
 
