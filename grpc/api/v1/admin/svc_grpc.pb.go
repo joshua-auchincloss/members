@@ -8,11 +8,10 @@ package admin
 
 import (
 	context "context"
-	common "members/grpc/api/v1/common"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	common "members/grpc/api/v1/common"
 )
 
 // This is a compile-time assertion to ensure that this generated file

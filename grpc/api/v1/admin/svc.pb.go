@@ -7,12 +7,11 @@
 package admin
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	common "members/grpc/api/v1/common"
 	_ "members/grpc/api/v1/registry/pkg"
 	reflect "reflect"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (

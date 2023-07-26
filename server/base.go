@@ -9,13 +9,36 @@ import (
 
 type (
 	base struct {
-		err  chan error
-		srv  invariant
-		tls  *tls.Config
-		cfg  *config.ServerTls
-		root *config.TlsConfig
+		err     chan error
+		srv     invariant
+		tls     *tls.Config
+		cfg     *config.ServerTls
+		root    *config.TlsConfig
+		starter func(Server) chan error
+
+		closers []func() error
 	}
 )
+
+func NewBase(
+	err chan error,
+	srv invariant,
+	tls *tls.Config,
+	cfg *config.ServerTls,
+	root *config.TlsConfig,
+	starter func(Server) chan error,
+	closers ...func() error,
+) base {
+	return base{
+		err,
+		srv,
+		tls,
+		cfg,
+		root,
+		starter,
+		closers,
+	}
+}
 
 var (
 	_ Server = ((*base)(nil))
@@ -42,9 +65,16 @@ func (s *base) ReportErr(err error) {
 }
 
 func (s *base) Start() chan error {
-	return starter(s)
+	return s.starter(s)
 }
 
 func (s *base) Stop(ctx context.Context, ttc time.Duration) error {
 	return stopper(s, ctx, ttc)
+}
+
+func (s *base) WithCloser(f func() error) {
+	s.closers = append(s.closers, f)
+}
+func (s *base) Closers() []func() error {
+	return s.closers
 }

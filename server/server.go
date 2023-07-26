@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/quic-go/quic-go"
-	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -22,11 +21,14 @@ type (
 		TlsEnabled() bool
 		GetTLS() *tls.Config
 		GetConfig() *config.ServerTls
+		WithCloser(f func() error)
+		Closers() []func() error
 		Stop(context.Context, time.Duration) error
 	}
 
 	invariant interface {
 		Close() error
+		// ServeListener(ln net.Listener) error
 		ListenAndServe() error
 		ListenAndServeTLS(string, string) error
 	}
@@ -84,42 +86,50 @@ func New(
 	return nil, nil
 }
 
-func starter(srv Server) chan error {
-	ch := make(chan error, 1)
-	go func(ch chan error) {
-		cf := srv.GetConfig()
-		tls := srv.TlsEnabled()
-		switch {
-		case tls && cf != nil:
-			ch <- srv.GetServer().ListenAndServeTLS(cf.CertFile, cf.KeyFile)
-		case !tls:
-			ch <- srv.GetServer().ListenAndServe()
-		default:
-			log.Fatal().Msg("tls enabled with no cert config")
-		}
-	}(ch)
-	return ch
+func starter_for(start func(srv Server) error) func(Server) chan error {
+	return func(srv Server) chan error {
+		ch := make(chan error, 1)
+		go func(ch chan error) {
+			ch <- start(srv)
+		}(ch)
+		return ch
+	}
 }
 
 func stopper(srv Server, ctx context.Context, ttc time.Duration) error {
 	// check n times
 	poll := time.NewTicker(ttc / timeoutChecks)
-	ch := make(chan error, 1)
-	go func() {
+	closers := srv.Closers()
+	tl := 1 + len(closers)
+	ch := make(chan error, tl)
+	go func(ch chan error) {
 		err := srv.GetServer().Close()
 		if err != nil {
 			ch <- err
 		}
-	}()
+		ch <- nil
+	}(ch)
+
+	for _, close := range closers {
+		go func(ch chan error, close func() error) {
+			if err := close(); err != nil {
+				ch <- err
+			}
+			ch <- nil
+		}(ch, close)
+	}
 	ctx, clean := context.WithTimeout(ctx, ttc)
 	defer clean()
-	for {
+	var join error
+	for err := range ch {
+		if err != nil {
+			join = errors.Join(join, err)
+		}
 		select {
-		case err := <-ch:
-			return err
 		case <-ctx.Done():
 			return errors.New("timed out for shutdown")
 		case <-poll.C:
 		}
 	}
+	return nil
 }

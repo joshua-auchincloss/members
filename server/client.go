@@ -67,7 +67,7 @@ func NewClient(
 
 func baseDial(proto string) func(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
 	return func(ctx context.Context, addr string, timeout time.Duration) (*net.Conn, error) {
-		return utils.LoopOrCancel(ctx, timeout, time.Nanosecond*15, func() (net.Conn, error) {
+		return utils.LoopOrCancel(ctx, timeout, time.Millisecond, func() (net.Conn, error) {
 			return net.Dial(proto, addr)
 		})
 	}

@@ -23,6 +23,7 @@ require (
 	github.com/uptrace/bun/dialect/sqlitedialect v1.1.14
 	github.com/uptrace/bun/driver/sqliteshim v1.1.14
 	github.com/urfave/cli/v2 v2.25.7
+	github.com/valyala/fasthttp v1.48.0
 	go.uber.org/fx v1.20.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/net v0.12.0
@@ -72,6 +73,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
+	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect

@@ -3,10 +3,8 @@ package health
 import (
 	"members/common"
 	"members/grpc/api/v1/health"
-	"members/server"
 	"members/service"
-
-	"go.uber.org/fx"
+	"members/service/core"
 )
 
 type (
@@ -14,9 +12,9 @@ type (
 )
 
 var (
-	client_factory = service.NewClientFactory(common.ServiceHealth, health.NewHealthClient)
-	ClientFactory  = fx.Module("health-client-factory",
-		fx.Supply(client_factory),
-		server.LoadBalancerFor(common.ServiceHealth),
+	ClientFactory = core.NewClient(
+		"health",
+		common.ServiceHealth,
+		health.NewHealthClient,
 	)
 )

@@ -4,48 +4,35 @@ import (
 	"members/common"
 	"members/config"
 	"members/service"
+	"members/service/core"
 	"members/storage/base"
 	"time"
-
-	"go.uber.org/fx"
 )
 
 type (
-	healthFactory struct {
-		poll time.Duration
-	}
 	ServiceFactory = service.ServiceFactory[*healthService]
 )
 
 var (
-	Module = fx.Module(
+	Module = core.NewModule[
+		ServiceFactory, *healthService,
+	](
 		"health-service",
-		fx.Provide(
-			fx.Annotate(
-				New,
-				fx.As(new(ServiceFactory)),
-			),
-		),
-		fx.Invoke(
-			service.Create[*healthService](common.ServiceHealth),
-		),
+		common.ServiceHealth,
+		New,
 	)
 )
 
 var (
-	_ ServiceFactory = ((*healthFactory)(nil))
-
 	default_polling = time.Second * 5
 )
 
 func New() ServiceFactory {
-	return &healthFactory{
-		default_polling,
-	}
-}
-
-func (h *healthFactory) CreateService(cfg config.ConfigProvider, store base.BaseStore) *healthService {
-	return &healthService{
-		store: store,
-	}
+	return core.New[*healthService](
+		func(cfg config.ConfigProvider, store base.BaseStore) *healthService {
+			return &healthService{
+				store: store,
+			}
+		},
+	)
 }

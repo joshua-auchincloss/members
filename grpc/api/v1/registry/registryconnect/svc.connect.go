@@ -7,13 +7,12 @@ package registryconnect
 import (
 	context "context"
 	errors "errors"
+	connect_go "github.com/bufbuild/connect-go"
 	common "members/grpc/api/v1/common"
 	_ "members/grpc/api/v1/registry"
 	pkg "members/grpc/api/v1/registry/pkg"
 	http "net/http"
 	strings "strings"
-
-	connect_go "github.com/bufbuild/connect-go"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

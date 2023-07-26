@@ -1,45 +1,39 @@
 package registry
 
 import (
+	"members/common"
 	"members/config"
 	"members/service"
-	"members/storage"
+	"members/service/core"
+	"members/storage/base"
 )
 
 type (
-	registryFactory struct{}
 	RegistryFactory = service.ServiceFactory[*registryService]
 )
 
 var (
-// Module = service.GrpcModule[registryService, registry.UnimplementedRegistryHandler](common.ServiceRegistry, registryconnect.NewRegistryHandler)
-
-// Module = fx.Module(
-//
-//	"registry-service",
-//	fx.Provide(
-//		fx.Annotate(
-//			create,
-//			fx.As(new(RegistryFactory)),
-//		),
-//	),
-//	fx.Invoke(
-//		service.Create[*registryService](common.ServiceRegistry),
-//	),
-//
-// )
+	Module = core.NewModule[
+		RegistryFactory, *registryService,
+	](
+		"registry",
+		common.ServiceRegistry,
+		New,
+	)
 )
 
-// var (
-// 	_ RegistryFactory = ((*registryFactory)(nil))
-// )
-
-func create(svc *service.SvcFramework) *registryFactory {
-	return &registryFactory{}
+func New() RegistryFactory {
+	return core.New[*registryService](
+		func(cfg config.ConfigProvider, store base.BaseStore) *registryService {
+			return &registryService{
+				// store: store,
+			}
+		},
+	)
 }
 
-func (h *registryFactory) CreateService(cfg config.ConfigProvider, store storage.Store) *registryService {
-	return &registryService{
-		store: store,
-	}
-}
+// func (h *registryFactory) CreateService(cfg config.ConfigProvider, store storage.Store) *registryService {
+// 	return &registryService{
+// 		store: store,
+// 	}
+// }

@@ -3,17 +3,15 @@ package registry
 import (
 	"context"
 	"log"
-	"members/grpc/api/v1/registry/registryconnect"
 	registry "members/grpc/api/v1/registry/registryconnect"
 	"members/service"
-	"members/storage"
 )
 
 type (
 	registryService struct {
 		registry.UnimplementedRegistryHandler
 		service.BaseService
-		store storage.Store
+		// store storage.Store
 	}
 )
 
@@ -26,7 +24,7 @@ func (h *registryService) WithBase(base service.BaseService) {
 }
 
 func (h *registryService) Start(ctx context.Context) error {
-	pth, handle := registryconnect.NewRegistryHandler(h)
+	pth, handle := registry.NewRegistryHandler(h)
 	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
 	if err != nil {
 		return err

@@ -7,11 +7,10 @@
 package health
 
 import (
-	pkg "members/grpc/api/v1/health/pkg"
-	reflect "reflect"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	pkg "members/grpc/api/v1/health/pkg"
+	reflect "reflect"
 )
 
 const (

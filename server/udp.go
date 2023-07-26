@@ -20,6 +20,24 @@ var (
 	_ Server = ((*udpServer)(nil))
 )
 
+func udp_starter(
+	u Server,
+) error {
+	srv := u.GetServer().(*http3.Server)
+	ln, err := quic.ListenAddrEarly(
+		srv.Addr,
+		srv.TLSConfig,
+		srv.QuicConfig,
+	)
+	if err != nil {
+		return err
+	}
+	u.WithCloser(func() error {
+		return ln.Close()
+	})
+	return srv.ServeListener(ln)
+}
+
 func NewUDP(
 	watcher errs.Watcher,
 	cfg *config.ServerTls,
@@ -29,6 +47,7 @@ func NewUDP(
 	addr string,
 	handler http.Handler,
 ) (Server, error) {
+
 	return &udpServer{
 		base: base{
 			err: watcher.Subscription(),
@@ -38,8 +57,9 @@ func NewUDP(
 				QuicConfig: conf,
 				TLSConfig:  http3.ConfigureTLSConfig(t),
 			},
-			cfg:  cfg,
-			root: root,
+			cfg:     cfg,
+			root:    root,
+			starter: starter_for(udp_starter),
 		},
 	}, nil
 }

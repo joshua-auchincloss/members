@@ -8,11 +8,10 @@ package health
 
 import (
 	context "context"
-	pkg "members/grpc/api/v1/health/pkg"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	pkg "members/grpc/api/v1/health/pkg"
 )
 
 // This is a compile-time assertion to ensure that this generated file
