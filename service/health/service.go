@@ -15,9 +15,8 @@ import (
 
 type (
 	healthService struct {
+		*service.BaseService
 		health.UnimplementedHealthHandler
-		service.BaseService
-
 		store base.BaseStore
 	}
 )
@@ -32,7 +31,7 @@ var (
 	}
 )
 
-func (h *healthService) WithBase(base service.BaseService) {
+func (h *healthService) WithBase(base *service.BaseService) {
 	h.BaseService = base
 }
 
@@ -72,7 +71,7 @@ func (h *healthService) loop(ctx context.Context) error {
 
 func (h *healthService) Start(ctx context.Context) error {
 	pth, handle := healthconnect.NewHealthHandler(h)
-	clean, err := h.GrpcStarter(h.GetHealth(), pth, handle)
+	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
 	if err != nil {
 		return err
 	}

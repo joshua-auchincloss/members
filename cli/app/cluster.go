@@ -20,9 +20,6 @@ import (
 	"members/service/starter"
 	storage_fx "members/storage/fx"
 	"members/utils"
-	"os"
-	"os/signal"
-	"syscall"
 
 	stdlog "log"
 
@@ -177,10 +174,8 @@ var (
 				Name:  "start",
 				Flags: config.ClusterFlags(),
 				Action: func(orig *cli.Context) error {
-					sigs := make(chan os.Signal, 1)
-					signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 					app := fx.New(
-						fx.Supply(orig, sigs),
+						fx.Supply(orig),
 						logging.Module,
 						errs.Module,
 						config.Module,
@@ -192,14 +187,7 @@ var (
 						starter.Module,
 						p2p.Module,
 					)
-					if err := app.Start(orig.Context); err != nil {
-						return (err)
-					}
-					<-sigs
-					if err := app.Stop(orig.Context); err != nil {
-						return (err)
-					}
-					return nil
+					return utils.FxWithTermination(app, orig.Context)
 				},
 			},
 		},

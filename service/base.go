@@ -8,25 +8,22 @@ import (
 	errs "members/errors"
 	"members/logging"
 	"members/utils"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 )
 
-type (
-	Chain       = func(ctx context.Context) error
-	BaseService struct {
-		prov    config.ConfigProvider
-		mu      *sync.Mutex
-		key     common.Service
-		watcher errs.Watcher
-		errs    chan error
+func noop(context.Context) error { return nil }
 
-		status  common.Status
-		health  string
-		service string
-		dns     string
+type (
+	Chain = func(ctx context.Context) error
+
+	BaseService struct {
+		mu *sync.Mutex
+
+		status common.Status
 
 		// chain startup
 		start Chain
@@ -35,11 +32,22 @@ type (
 		// chain cleanup events
 		cleanup Chain
 
+		logger  *zerolog.Logger
+		prov    config.ConfigProvider
+		key     common.Service
+		watcher errs.Watcher
+		errs    chan error
+		sigs    chan os.Signal
+
+		health  string
+		service string
+		dns     string
+
 		tick time.Duration
 
 		ishealth bool
 
-		logger *zerolog.Logger
+		link Service
 	}
 )
 
@@ -47,6 +55,44 @@ var (
 	poll_freq time.Duration = time.Millisecond * 500
 	errDone                 = errors.New("done")
 )
+
+func (s *BaseService) Name() string {
+	return common.ServiceKeys.Get(s.key)
+}
+
+func (s *BaseService) GetKey() common.Service {
+	return s.key
+}
+
+func (s *BaseService) Compliment() Service {
+	return s.link
+}
+
+func (s *BaseService) GetHealth() string {
+	// if !s.ishealth {
+	// 	return s.Compliment().GetService()
+	// }
+	return s.health
+}
+
+func (s *BaseService) GetService() string {
+	// if s.ishealth {
+	// 	return s.Compliment().GetService()
+	// }
+	return s.service
+}
+
+func (s *BaseService) GetDns() string {
+	return s.dns
+}
+
+func (s *BaseService) GetErrs() chan error {
+	return s.errs
+}
+
+func (s *BaseService) GetProv() config.ConfigProvider {
+	return s.prov
+}
 
 func (s *BaseService) SetStatus(status common.Status) {
 	s.mu.Lock()
@@ -60,79 +106,11 @@ func (s *BaseService) GetStatus() common.Status {
 	return s.status
 }
 
-func (s *BaseService) GetKey() common.Service {
-	return s.key
-}
-func (s *BaseService) GetMu() *sync.Mutex {
-	return s.mu
-}
-func (s *BaseService) GetHealth() string {
-	return s.health
-}
-func (s *BaseService) GetService() string {
-	return s.service
-}
-func (s *BaseService) GetDns() string {
-	return s.dns
-}
-func (s *BaseService) GetErrs() chan error {
-	return s.errs
-}
-func (s *BaseService) GetProv() config.ConfigProvider {
-	return s.prov
-}
-
-func (s *BaseService) GetBase() *BaseService {
-	return s
-}
-
-func (s *BaseService) Name() string {
-	return common.ServiceKeys.Get(s.key)
-}
-
-func (s *BaseService) loop(ctx context.Context) error {
-	if s.status != common.StatusStarted {
-		return errDone
-	}
-	select {
-	case <-ctx.Done():
-		s.logger.Info().Msg("closing")
-		return errDone
-	default:
-		return nil
-	}
-}
-
-/*
-Whether to chain the next iteration or start cleaning up the server
-
-At the core, it always checks the status of the server and whether the cleanup signal is received
-*/
-func (s *BaseService) WithLoop(loop ...Chain) {
-	var chain Chain
-	if s.next == nil {
-		chain = s.loop
-	} else {
-		chain = s.next
-	}
-	if len(loop) > 0 {
-		for n, next := range loop {
-			prev := chain
-			chain = func(ctx context.Context) error {
-				s.logger.Debug().Int("recursion", n).Send()
-				if err := prev(ctx); err != nil {
-					return err
-				}
-				return next(ctx)
-			}
-		}
-	}
-	s.next = chain
-}
-
-func (s *BaseService) LoopedStarter(ctx context.Context, clean Chain, chain ...Chain) {
+func (s *BaseService) LoopedStarter(ctx context.Context,
+	clean Chain, chain ...Chain) {
+	s.WithNext(chain...)
+	s.WithStop(clean)
 	s.SetStatus(common.StatusStarted)
-	s.WithLoop(chain...)
 	tick := time.NewTicker(s.tick)
 	for {
 		if err := s.next(ctx); err != nil {
@@ -148,15 +126,12 @@ func (s *BaseService) LoopedStarter(ctx context.Context, clean Chain, chain ...C
 	}
 }
 
-func (s *BaseService) Chain(ctx context.Context) error {
-	return s.start(ctx)
-}
-
 func (s *BaseService) GetLogger() *zerolog.Logger {
 	return s.logger
 }
 
-func (s *BaseService) NewBase(
+func NewBase(
+	key common.Service,
 	prov config.ConfigProvider,
 	watcher errs.Watcher,
 	dns, health, service string,
@@ -166,20 +141,86 @@ func (s *BaseService) NewBase(
 	if utils.ZeroStr(dns) {
 		dns = service
 	}
-	return &BaseService{prov,
+	return &BaseService{
 		new(sync.Mutex),
-		s.key,
+		common.NoStatus,
+		nil, nil, nil,
+		nil,
+		prov,
+		key,
 		watcher,
 		watcher.Subscription(),
-		common.NoStatus,
+		utils.Sigs(),
 		health,
 		service,
 		dns,
-		nil, nil, nil,
 		tick,
 		ishealth,
 		nil,
 	}
+}
+
+func (s *BaseService) WithOp(
+	root Chain,
+	get func(*BaseService) Chain,
+	set func(Chain),
+	loop ...Chain,
+) {
+	var chain Chain
+	prev := get(s)
+	if prev == nil {
+		chain = root
+	} else {
+		chain = prev
+	}
+	if len(loop) > 0 {
+		for n, next := range loop {
+			prev := chain
+			chain = func(ctx context.Context) error {
+				s.logger.Debug().Int("recursion", n).Send()
+				if err := prev(ctx); err != nil {
+					return err
+				}
+				return next(ctx)
+			}
+		}
+	}
+	set(chain)
+}
+
+func (s *BaseService) WithChained(
+	svc ...Service,
+) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.WithStart(func(ctx context.Context) error {
+		for _, sv := range svc {
+			if err := sv.Start(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	s.WithStop(
+		func(ctx context.Context) error {
+			for _, sv := range svc {
+				if err := sv.Stop(ctx); err != nil {
+					s.errs <- err
+					return err
+				}
+			}
+			return nil
+		},
+	)
+}
+
+func (s *BaseService) Stop(ctx context.Context) error {
+	s.SetStatus(common.StatusClosed)
+	return s.cleanup(ctx)
+}
+
+func (s *BaseService) WithKey(key common.Service) {
+	s.key = key
 }
 
 func (s *BaseService) BuildLogger(
@@ -204,33 +245,68 @@ func (s *BaseService) BuildLogger(
 	s.logger = sub
 }
 
-func (s *BaseService) WithChainer(
-	svc ...Service,
-) {
+func (s *BaseService) Logger() *zerolog.Logger {
+	return s.logger
+}
+
+func (s *BaseService) loop(ctx context.Context) error {
+	if s.status != common.StatusStarted {
+		return errDone
+	}
+	select {
+	case <-s.sigs:
+		s.logger.Info().Msg("closing")
+		return errDone
+	case <-ctx.Done():
+		s.logger.Info().Msg("closing")
+		return errDone
+	default:
+		return nil
+	}
+}
+
+/*
+Whether to chain the next iteration or start cleaning up the server
+
+At the core, it always checks the status of the server and whether the cleanup signal is received
+*/
+func (s *BaseService) WithNext(loop ...Chain) {
+	s.WithOp(
+		s.loop,
+		func(bs *BaseService) Chain { return s.next },
+		func(c Chain) { s.next = c },
+		loop...,
+	)
+}
+
+func (s *BaseService) WithStart(loop ...Chain) {
+	s.WithOp(
+		noop,
+		func(bs *BaseService) Chain { return s.start },
+		func(c Chain) { s.start = c },
+		loop...,
+	)
+}
+
+func (s *BaseService) WithStop(loop ...Chain) {
+	s.WithOp(
+		noop,
+		func(bs *BaseService) Chain { return s.cleanup },
+		func(c Chain) { s.cleanup = c },
+		loop...,
+	)
+}
+
+func (s *BaseService) Chain(ctx context.Context) error {
+	return s.start(ctx)
+}
+
+func (s *BaseService) WithLink(o Service) error {
+	if s.link != nil {
+		return errs.ErrorOccupied
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.start = func(ctx context.Context) error {
-		for _, sv := range svc {
-			go sv.Start(ctx)
-		}
-		return nil
-	}
-	s.cleanup = func(ctx context.Context) error {
-		for _, sv := range svc {
-			if err := sv.Stop(ctx); err != nil {
-				s.errs <- err
-				return err
-			}
-		}
-		return nil
-	}
-}
-
-func (s *BaseService) Close(ctx context.Context) error {
-	defer s.SetStatus(common.StatusClosed)
-	return s.cleanup(ctx)
-}
-
-func (s *BaseService) WithKey(key common.Service) {
-	s.key = key
+	s.link = o
+	return nil
 }

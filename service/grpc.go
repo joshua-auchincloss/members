@@ -22,7 +22,7 @@ func (h *BaseService) GrpcStarter(
 		return nil, err
 	}
 	ch := srv.Start()
-	h.WithLoop(
+	h.WithNext(
 		func(ctx context.Context) error {
 			sub, cancel := context.WithTimeout(ctx, time.Millisecond*50)
 			defer cancel()

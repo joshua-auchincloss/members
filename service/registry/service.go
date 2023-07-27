@@ -5,13 +5,14 @@ import (
 	"log"
 	registry "members/grpc/api/v1/registry/registryconnect"
 	"members/service"
+	"members/storage"
 )
 
 type (
 	registryService struct {
+		*service.BaseService
 		registry.UnimplementedRegistryHandler
-		service.BaseService
-		// store storage.Store
+		store storage.Store
 	}
 )
 
@@ -19,7 +20,7 @@ var (
 	_ service.Service = ((*registryService)(nil))
 )
 
-func (h *registryService) WithBase(base service.BaseService) {
+func (h *registryService) WithBase(base *service.BaseService) {
 	h.BaseService = base
 }
 

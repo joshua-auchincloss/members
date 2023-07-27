@@ -16,22 +16,12 @@ import (
 	"go.uber.org/fx"
 )
 
-func NewAnnotation() {
-}
-
 type (
-	AppResult struct {
-		Svc     Service
-		PID     int
-		Service string
-		Health  string
-	}
 	SvcFramework struct {
 		mu     *sync.Mutex
 		in     map[common.Service]wrapped
 		health wrapped
 	}
-
 	wrapped = func(health, rpc string) Service
 )
 
@@ -81,10 +71,6 @@ func (s *SvcFramework) Start(
 						return service.Start(ctx)
 					},
 					OnStop: func(ctx context.Context) error {
-						err := service.GetBase().Close(ctx)
-						if err != nil {
-							log.Printf("error closing children: %s", err)
-						}
 						return service.Stop(ctx)
 					},
 				})
@@ -109,11 +95,15 @@ func Create[T Service](key common.Service) func(
 		watcher errs.Watcher) error {
 		log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")
 		cfg := prov.GetConfig()
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, common.ContextKeyWithStore, store)
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
 			fw.health = func(health, rpc string) Service {
-				h := factory.CreateService(prov, store)
-				h.WithBase(*h.NewBase(prov,
+				h := factory.CreateService(ctx, prov)
+				h.WithBase(NewBase(
+					common.ServiceHealth,
+					prov,
 					watcher,
 					cfg.Members.Dns,
 					health,
@@ -126,8 +116,10 @@ func Create[T Service](key common.Service) func(
 			return nil
 		}
 		fu := func(health, rpc string) Service {
-			svc := factory.CreateService(prov, store)
-			svc.WithBase(*svc.NewBase(prov,
+			svc := factory.CreateService(ctx, prov)
+			svc.WithBase(NewBase(
+				key,
+				prov,
 				watcher,
 				cfg.Members.Dns,
 				health,
@@ -138,9 +130,11 @@ func Create[T Service](key common.Service) func(
 			svc.BuildLogger(root)
 
 			h := fw.health(health, rpc)
+			// svc.WithLink(h)
 			h.WithKey(key)
 			h.BuildLogger(root)
-			h.WithChainer(svc)
+			h.WithChained(svc)
+			// h.WithLink(svc)
 			return h
 		}
 

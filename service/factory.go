@@ -4,37 +4,53 @@ import (
 	"context"
 	"members/common"
 	"members/config"
-	errs "members/errors"
-	"members/storage/base"
-	"time"
-
-	"github.com/rs/zerolog"
 )
 
 type (
-	Service interface {
+	Lifecycle interface {
 		Start(ctx context.Context) error
 		Stop(ctx context.Context) error
-		Chain(ctx context.Context) error
-		WithChainer(
-			svc ...Service,
-		)
+	}
+
+	ServiceMeta interface {
+		GetDns() string
+		GetKey() common.Service
 		GetHealth() string
 		GetService() string
-		GetDns() string
 		WithKey(key common.Service)
-		GetBase() *BaseService
-		WithBase(base BaseService)
-		NewBase(
-			cfg config.ConfigProvider,
-			watcher errs.Watcher,
-			dns, health, service string,
-			tick time.Duration,
-			ishealth bool,
-		) *BaseService
-		BuildLogger(root *zerolog.Logger)
 	}
+
+	Chaining interface {
+		Chain(ctx context.Context) error
+
+		WithOp(
+			root Chain,
+			get func(*BaseService) Chain,
+			set func(Chain),
+			loop ...Chain,
+		)
+
+		WithNext(loop ...Chain)
+		WithStart(loop ...Chain)
+		WithStop(loop ...Chain)
+
+		WithChained(
+			svc ...Service,
+		)
+	}
+
+	Service interface {
+		Lifecycle
+		ServiceMeta
+		Chaining
+		common.Logs
+
+		WithBase(*BaseService)
+		Compliment() Service
+		WithLink(Service) error
+	}
+
 	ServiceFactory[T Service] interface {
-		CreateService(cfg config.ConfigProvider, store base.BaseStore) T
+		CreateService(ctx context.Context, cfg config.ConfigProvider) T
 	}
 )

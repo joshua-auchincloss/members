@@ -15,8 +15,8 @@ import (
 
 type (
 	adminService struct {
+		*service.BaseService
 		admin.UnimplementedAdminHandler
-		service.BaseService
 		store base.BaseStore
 	}
 )
@@ -25,7 +25,7 @@ var (
 	_ service.Service = ((*adminService)(nil))
 )
 
-func (h *adminService) WithBase(base service.BaseService) {
+func (h *adminService) WithBase(base *service.BaseService) {
 	h.BaseService = base
 }
 
