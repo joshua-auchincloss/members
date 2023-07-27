@@ -2,7 +2,8 @@ version: "3"
 env:
   run: go run ./cli
   cli: ./cli-bin
-  flags: --tls --debug
+  flags: --tls
+  # --debug
 tasks:
   binary:
     cmds:
@@ -180,7 +181,8 @@ tasks:
   memory-cluster:
     dotenv:
       - env/sqlite.env
-      - env/b.env
+      - env/a.env
+      # - env/b.env
     cmds:
       - task cluster
 

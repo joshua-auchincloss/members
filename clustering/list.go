@@ -52,19 +52,21 @@ func (d *dnsList) AvailabilityWalk(wg *sync.WaitGroup, depth int) {
 	defer wg.Done()
 	if err := d.Walk(
 		func(addr ClusterMember) error {
-			if !addr.Checked() {
-				defer addr.SetChecked(true)
+			if !addr.Checked() || addr.Stale() {
+				stat := addr.Suspend()
+				stat.Check = time.Now()
 				address := addr.Address()
+				defer addr.Restore(stat)
 				log.Info().Str("proto", "tcp").Str("address", address).Send()
 				if conn, err := net.DialTimeout("tcp", address, time.Millisecond*1); err != nil {
+					stat.Visible = false
 					switch err {
 					case net.ErrClosed:
 					default:
 						return err
 					}
-					addr.SetVisible(false)
 				} else {
-					addr.SetVisible(true)
+					stat.Visible = true
 					defer conn.Close()
 				}
 			}
@@ -151,8 +153,7 @@ func (m *dnsList) AddToCluster(svc common.Service, dns, proto, addr string) {
 			svc,
 			proto,
 			addr,
-			false,
-			false,
+			nil,
 		})
 	}
 	m.members[dns] = c

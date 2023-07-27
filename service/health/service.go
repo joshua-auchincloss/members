@@ -40,7 +40,7 @@ func (h *healthService) loop(ctx context.Context) error {
 	defer cancel()
 	memb := &common.Membership{
 		Dns:            h.DNS(),
-		Service:        h.Role(),
+		Service:        h.Compliment().Role(),
 		PublicAddress:  h.Service(),
 		JoinTime:       time.Now(),
 		LastHealthTime: time.Now(),
