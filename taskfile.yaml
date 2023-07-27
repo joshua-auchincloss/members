@@ -1,8 +1,22 @@
 version: "3"
 env:
   run: go run ./cli
+  cli: ./cli-bin
   flags: --tls --debug
 tasks:
+  binary:
+    cmds:
+      - go build  -o ./cli-bin ./cli
+
+  list-bin:
+    env:
+      CONFIG: env/client.yaml
+    dotenv:
+      - env/tls.env
+      - env/client.env
+    cmds:
+      - ./cli-bin cluster describe $flags
+
   kv:
     cmds:
       - docker run -d

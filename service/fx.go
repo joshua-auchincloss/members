@@ -20,18 +20,18 @@ type (
 	SvcFramework struct {
 		mu     *sync.Mutex
 		in     map[common.Service]wrapped
-		health wrapped
+		health func(string) Service
 	}
 	wrapped = func(health, rpc string) Service
 )
 
 var (
 	Module = fx.Options(
-		fx.Provide(frame),
+		fx.Provide(New),
 	)
 )
 
-func frame(prov config.ConfigProvider) *SvcFramework {
+func New(prov config.ConfigProvider) *SvcFramework {
 	return &SvcFramework{
 		mu: new(sync.Mutex),
 		in: make(map[common.Service]wrapped),
@@ -86,6 +86,7 @@ func Create[T Service](key common.Service) func(
 	store base.BaseStore,
 	root *zerolog.Logger,
 	watcher errs.Watcher) error {
+	log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")
 	return func(
 		prov config.ConfigProvider,
 		fw *SvcFramework,
@@ -93,28 +94,29 @@ func Create[T Service](key common.Service) func(
 		store base.BaseStore,
 		root *zerolog.Logger,
 		watcher errs.Watcher) error {
-		log.Info().Str("svc", common.ServiceKeys.Get(key)).Msg("with create")
 		cfg := prov.GetConfig()
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, common.ContextKeyWithStore, store)
 		if key == common.ServiceHealth {
 			fw.mu.Lock()
-			fw.health = func(health, rpc string) Service {
+			defer fw.mu.Unlock()
+			// capture the health factory role
+			fw.health = func(health string) Service {
 				h := factory.CreateService(ctx, prov)
 				h.WithBase(NewBase(
-					common.ServiceHealth,
+					key,
 					prov,
 					watcher,
 					cfg.Members.Dns,
 					health,
-					rpc,
 					time.Second*10,
-					true))
+				))
 				return h
 			}
-			defer fw.mu.Unlock()
 			return nil
 		}
+
+		// capture the registry services & pair to a health service
 		fu := func(health, rpc string) Service {
 			svc := factory.CreateService(ctx, prov)
 			svc.WithBase(NewBase(
@@ -122,19 +124,21 @@ func Create[T Service](key common.Service) func(
 				prov,
 				watcher,
 				cfg.Members.Dns,
-				health,
 				rpc,
 				poll_freq,
-				false))
-			svc.WithKey(key)
-			svc.BuildLogger(root)
+			))
 
-			h := fw.health(health, rpc)
-			// svc.WithLink(h)
-			h.WithKey(key)
-			h.BuildLogger(root)
+			// link health chain to the service chain
+			h := fw.health(health)
 			h.WithChained(svc)
-			// h.WithLink(svc)
+
+			// link both services
+			h.WithLink(svc)
+			svc.WithLink(h)
+
+			// build service-aware loggers
+			h.BuildLogger(root)
+			svc.BuildLogger(root)
 			return h
 		}
 

@@ -10,7 +10,7 @@ import (
 func (h *BaseService) GrpcStarter(
 	addr, path string, handler http.Handler) (func(ctx context.Context) error, error) {
 	cfg := h.prov.GetConfig()
-	tc := cfg.Tls.GetService(h.key)
+	tc := cfg.Tls.GetService(h.Role())
 	srv, err := server.New(
 		h.prov,
 		tc,

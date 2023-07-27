@@ -20,32 +20,38 @@ func noop(context.Context) error { return nil }
 type (
 	Chain = func(ctx context.Context) error
 
-	BaseService struct {
-		mu *sync.Mutex
-
-		status common.Status
-
+	BaseChain struct {
 		// chain startup
 		start Chain
 		// chain loop events
 		next Chain
 		// chain cleanup events
 		cleanup Chain
+	}
 
-		logger  *zerolog.Logger
-		prov    config.ConfigProvider
-		key     common.Service
+	BaseService struct {
+		*BaseChain
+		mu *sync.Mutex
+
+		role   common.Service
+		status common.Status
+
+		prov   config.ConfigProvider
+		logger *zerolog.Logger
+
+		// capture centralized errors
 		watcher errs.Watcher
-		errs    chan error
-		sigs    chan os.Signal
-
-		health  string
-		service string
-		dns     string
-
+		// local channel to receive errors
+		errs chan error
+		// local channel to receive signals
+		sigs chan os.Signal
+		// how often to poll all the above,
+		// calling the .next(ctx) [error]
+		// chain
 		tick time.Duration
 
-		ishealth bool
+		service string
+		dns     string
 
 		link Service
 	}
@@ -56,34 +62,74 @@ var (
 	errDone                 = errors.New("done")
 )
 
-func (s *BaseService) Name() string {
-	return common.ServiceKeys.Get(s.key)
+func NewBase(
+	role common.Service,
+	prov config.ConfigProvider,
+	watcher errs.Watcher,
+	dns, addr string,
+	tick time.Duration,
+) *BaseService {
+	if utils.ZeroStr(dns) {
+		dns = addr
+	}
+	return &BaseService{
+		&BaseChain{nil, nil, nil},
+		new(sync.Mutex),
+		role,
+		common.NoStatus,
+		prov,
+		nil,
+		watcher,
+		watcher.Subscription(),
+		utils.Sigs(),
+		tick,
+		addr,
+		dns,
+		nil,
+	}
 }
 
-func (s *BaseService) GetKey() common.Service {
-	return s.key
+func (s *BaseService) Name() string {
+	return common.ServiceKeys.Get(s.role)
+}
+
+func (s *BaseService) Role() common.Service {
+	return s.role
 }
 
 func (s *BaseService) Compliment() Service {
 	return s.link
 }
 
-func (s *BaseService) GetHealth() string {
-	// if !s.ishealth {
-	// 	return s.Compliment().GetService()
-	// }
-	return s.health
+func (s *BaseService) DNS() string {
+	switch s.Role() {
+	case common.ServiceHealth:
+		return s.Compliment().DNS()
+	default:
+		return s.dns
+	}
 }
 
-func (s *BaseService) GetService() string {
-	// if s.ishealth {
-	// 	return s.Compliment().GetService()
-	// }
+func (s *BaseService) Address() string {
 	return s.service
 }
 
-func (s *BaseService) GetDns() string {
-	return s.dns
+func (s *BaseService) Health() string {
+	switch s.role {
+	case common.ServiceHealth:
+		return s.Address()
+	default:
+		return s.Compliment().Address()
+	}
+}
+
+func (s *BaseService) Service() string {
+	switch s.role {
+	case common.ServiceHealth:
+		return s.Compliment().Address()
+	default:
+		return s.Address()
+	}
 }
 
 func (s *BaseService) GetErrs() chan error {
@@ -128,36 +174,6 @@ func (s *BaseService) LoopedStarter(ctx context.Context,
 
 func (s *BaseService) GetLogger() *zerolog.Logger {
 	return s.logger
-}
-
-func NewBase(
-	key common.Service,
-	prov config.ConfigProvider,
-	watcher errs.Watcher,
-	dns, health, service string,
-	tick time.Duration,
-	ishealth bool,
-) *BaseService {
-	if utils.ZeroStr(dns) {
-		dns = service
-	}
-	return &BaseService{
-		new(sync.Mutex),
-		common.NoStatus,
-		nil, nil, nil,
-		nil,
-		prov,
-		key,
-		watcher,
-		watcher.Subscription(),
-		utils.Sigs(),
-		health,
-		service,
-		dns,
-		tick,
-		ishealth,
-		nil,
-	}
 }
 
 func (s *BaseService) WithOp(
@@ -206,7 +222,6 @@ func (s *BaseService) WithChained(
 			for _, sv := range svc {
 				if err := sv.Stop(ctx); err != nil {
 					s.errs <- err
-					return err
 				}
 			}
 			return nil
@@ -219,10 +234,6 @@ func (s *BaseService) Stop(ctx context.Context) error {
 	return s.cleanup(ctx)
 }
 
-func (s *BaseService) WithKey(key common.Service) {
-	s.key = key
-}
-
 func (s *BaseService) BuildLogger(
 	root *zerolog.Logger,
 ) {
@@ -230,16 +241,20 @@ func (s *BaseService) BuildLogger(
 	defer s.mu.Unlock()
 	sub := logging.WithSub(root, s.Name(), func(ctx zerolog.Context) zerolog.Context {
 		cfg := s.prov.GetConfig()
-		if s.ishealth {
-			ctx = ctx.Str("address", s.health)
+		ishealth := s.role == common.ServiceHealth
+		if ishealth {
+			ctx = ctx.
+				Str("address", s.service).
+				Str("service-address", s.Compliment().Address())
 		} else {
-			ctx = ctx.Str("address", s.service)
+			ctx = ctx.Str("address", s.service).
+				Str("health-address", s.Compliment().Address())
 		}
 		return ctx.
 			Str("protocol",
 				cfg.Members.Protocol,
 			).Bool("health",
-			s.ishealth,
+			ishealth,
 		)
 	})
 	s.logger = sub
@@ -303,7 +318,7 @@ func (s *BaseService) Chain(ctx context.Context) error {
 
 func (s *BaseService) WithLink(o Service) error {
 	if s.link != nil {
-		return errs.ErrorOccupied
+		return errs.ErrOccupied
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

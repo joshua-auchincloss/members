@@ -26,7 +26,7 @@ func (h *registryService) WithBase(base *service.BaseService) {
 
 func (h *registryService) Start(ctx context.Context) error {
 	pth, handle := registry.NewRegistryHandler(h)
-	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
+	clean, err := h.GrpcStarter(h.Address(), pth, handle)
 	if err != nil {
 		return err
 	}

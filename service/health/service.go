@@ -39,9 +39,9 @@ func (h *healthService) loop(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, default_polling/2)
 	defer cancel()
 	memb := &common.Membership{
-		Dns:            h.GetDns(),
-		Service:        h.GetKey(),
-		PublicAddress:  h.GetService(),
+		Dns:            h.DNS(),
+		Service:        h.Role(),
+		PublicAddress:  h.Service(),
 		JoinTime:       time.Now(),
 		LastHealthTime: time.Now(),
 	}
@@ -71,7 +71,7 @@ func (h *healthService) loop(ctx context.Context) error {
 
 func (h *healthService) Start(ctx context.Context) error {
 	pth, handle := healthconnect.NewHealthHandler(h)
-	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
+	clean, err := h.GrpcStarter(h.Address(), pth, handle)
 	if err != nil {
 		return err
 	}

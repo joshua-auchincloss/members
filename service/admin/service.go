@@ -31,7 +31,7 @@ func (h *adminService) WithBase(base *service.BaseService) {
 
 func (h *adminService) Start(ctx context.Context) error {
 	pth, handle := adminconnect.NewAdminHandler(h)
-	clean, err := h.GrpcStarter(h.GetService(), pth, handle)
+	clean, err := h.GrpcStarter(h.Address(), pth, handle)
 	if err != nil {
 		return err
 	}

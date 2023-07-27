@@ -7,10 +7,11 @@ package aconnect
 import (
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	a "members/grpc/test_protos/pkg/a"
 	http "net/http"
 	strings "strings"
+
+	connect_go "github.com/bufbuild/connect-go"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

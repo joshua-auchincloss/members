@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"members/config"
 	errs "members/errors"
 	"net"
@@ -24,7 +25,10 @@ var (
 )
 
 func tcp_starter(t Server) error {
-	srv := t.GetServer().(*http.Server)
+	srv, ok := t.GetServer().(*http.Server)
+	if !ok {
+		return errors.Join(errs.ErrCastInvalid, errs.ErrServerStarter)
+	}
 	ip := net.ParseIP(strings.Split(srv.Addr, ":")[0])
 	nw := "tcp4"
 	if ip != nil {

@@ -13,16 +13,25 @@ type (
 	}
 
 	ServiceMeta interface {
-		GetDns() string
-		GetKey() common.Service
-		GetHealth() string
-		GetService() string
-		WithKey(key common.Service)
+		DNS() string
+		Address() string
+		Role() common.Service
+		Service() string
+		Health() string
 	}
 
 	Chaining interface {
+		// call the chain loop startup process
+		// equivalent to .Start(ctx) [error] however we
+		// always want to call this
 		Chain(ctx context.Context) error
 
+		// with an operation.
+		// if get(svc) -> chain == nil:
+		//  -> use root chain
+
+		// then, merge each element in the loop chain
+		// finally, set the final chain using a fn
 		WithOp(
 			root Chain,
 			get func(*BaseService) Chain,
@@ -30,10 +39,15 @@ type (
 			loop ...Chain,
 		)
 
+		// whether to proceed serving
 		WithNext(loop ...Chain)
+		// chains the startup events
 		WithStart(loop ...Chain)
+
+		// chains the shutdown between services
 		WithStop(loop ...Chain)
 
+		// chains the startup between different services
 		WithChained(
 			svc ...Service,
 		)

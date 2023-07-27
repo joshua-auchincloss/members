@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"members/config"
 	errs "members/errors"
 	"net/http"
@@ -23,7 +24,10 @@ var (
 func udp_starter(
 	u Server,
 ) error {
-	srv := u.GetServer().(*http3.Server)
+	srv, ok := u.GetServer().(*http3.Server)
+	if !ok {
+		return errors.Join(errs.ErrCastInvalid, errs.ErrServerStarter)
+	}
 	ln, err := quic.ListenAddrEarly(
 		srv.Addr,
 		srv.TLSConfig,
